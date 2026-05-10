@@ -1,0 +1,61 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg: 10 11 20;
+    --bg-elev: 16 18 32;
+    --bg-card: 20 23 40;
+    --border: 39 42 66;
+    --border-strong: 64 68 102;
+    --fg: 232 234 248;
+    --fg-muted: 148 154 184;
+    --fg-dim: 96 102 132;
+    --neon-violet: 139 92 246;
+    --neon-cyan: 34 211 238;
+    --neon-lime: 163 230 53;
+    --danger: 248 113 113;
+    --success: 74 222 128;
+  }
+
+  * { @apply border-border; }
+  html { scroll-behavior: smooth; }
+  body { font-feature-settings: 'cv02', 'cv03', 'cv11'; }
+
+  ::selection {
+    background: rgb(var(--neon-violet) / 0.4);
+    color: rgb(var(--fg));
+  }
+
+  *:focus-visible {
+    @apply outline-none ring-2 ring-neon-violet/60 ring-offset-2 ring-offset-bg;
+  }
+
+  .tabular { font-variant-numeric: tabular-nums; }
+}
+
+@layer components {
+  .glass {
+    @apply bg-bg-card/60 backdrop-blur-xl border border-border/80;
+  }
+  .glass-strong {
+    @apply bg-bg-card/80 backdrop-blur-2xl border border-border-strong/60;
+  }
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-neon-violet to-neon-cyan px-5 py-2.5 font-medium text-bg shadow-lg shadow-neon-violet/20 transition-[transform,box-shadow] duration-200 hover:scale-[1.02] hover:shadow-neon-violet/40 active:scale-[0.98] disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed;
+  }
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-border-strong bg-bg-elev/60 px-5 py-2.5 font-medium text-fg transition-[background-color,border-color] duration-200 hover:bg-bg-elev hover:border-neon-violet/40 active:scale-[0.98];
+  }
+  .input-base {
+    @apply w-full rounded-xl border border-border-strong bg-bg-elev/60 px-4 py-2.5 text-fg placeholder:text-fg-dim transition-colors focus:border-neon-violet/60 focus:bg-bg-elev;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
