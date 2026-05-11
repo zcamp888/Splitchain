@@ -5,9 +5,12 @@ import { createSupabaseServiceClient } from '@/lib/supabase/server'
 
 export const runtime = 'nodejs'
 
-function fail(stage: string, detail: string, status = 500) {
-  console.error(`[verify:${stage}]`, detail)
-  return NextResponse.json({ error: `${stage}: ${detail}` }, { status })
+function fail(stage: string, detail: string, status = 500, extra?: any) {
+  console.error(`[verify:${stage}]`, detail, extra || '')
+  return NextResponse.json(
+    { error: `${stage}: ${detail}`, extra: extra || null },
+    { status }
+  )
 }
 
 export async function POST(req: Request) {
@@ -36,7 +39,7 @@ export async function POST(req: Request) {
       .eq('wallet_address', lower)
       .eq('nonce', nonce)
       .maybeSingle()
-    if (nonceErr) return fail(stage, nonceErr.message)
+    if (nonceErr) return fail(stage, nonceErr.message, 500, nonceErr)
     if (!nonceRow) return fail(stage, 'nonce not found — request a new one', 401)
     if (new Date(nonceRow.expires_at) < new Date()) return fail(stage, 'nonce expired', 401)
     if (!nonceRow.issued_at) return fail(stage, 'stale nonce — retry sign in', 401)
@@ -72,21 +75,19 @@ Issued At: ${nonceRow.issued_at}`
 
     let userId: string | null = null
 
-    // Try to find existing user by listing (admin)
     const { data: list, error: listErr } = await db.auth.admin.listUsers({ page: 1, perPage: 200 })
-    if (listErr) return fail(stage, `listUsers: ${listErr.message}`)
+    if (listErr) return fail(stage, `listUsers: ${listErr.message}`, 500, listErr)
     const existing = list?.users?.find((u: any) => u.email === syntheticEmail)
 
     if (existing) {
       userId = existing.id
-      // Force the password to our deterministic value (handles old users with mismatched password)
       stage = 'reset-password'
       const { error: updErr } = await db.auth.admin.updateUserById(existing.id, {
         password,
         email_confirm: true,
         user_metadata: { ...(existing.user_metadata || {}), wallet_address: lower },
       })
-      if (updErr) return fail(stage, updErr.message)
+      if (updErr) return fail(stage, updErr.message, 500, updErr)
     } else {
       stage = 'create-user'
       const { data: created, error: createErr } = await db.auth.admin.createUser({
@@ -95,7 +96,20 @@ Issued At: ${nonceRow.issued_at}`
         email_confirm: true,
         user_metadata: { wallet_address: lower },
       })
-      if (createErr || !created?.user) return fail(stage, createErr?.message || 'create returned no user')
+      if (createErr) {
+        return fail(
+          stage,
+          createErr.message || 'createUser returned error',
+          500,
+          {
+            name: createErr.name,
+            status: (createErr as any).status,
+            code: (createErr as any).code,
+            details: JSON.stringify(createErr),
+          }
+        )
+      }
+      if (!created?.user) return fail(stage, 'createUser returned no user', 500)
       userId = created.user.id
     }
 
@@ -106,14 +120,15 @@ Issued At: ${nonceRow.issued_at}`
       display_name: `${checksummed.slice(0, 6)}…${checksummed.slice(-4)}`,
       updated_at: new Date().toISOString(),
     })
-    if (profErr) return fail(stage, profErr.message)
+    if (profErr) return fail(stage, profErr.message, 500, profErr)
 
     stage = 'sign-in'
     const { data: signIn, error: signInErr } = await db.auth.signInWithPassword({
       email: syntheticEmail,
       password,
     })
-    if (signInErr || !signIn?.session) return fail(stage, signInErr?.message || 'no session returned')
+    if (signInErr) return fail(stage, signInErr.message, 500, signInErr)
+    if (!signIn?.session) return fail(stage, 'no session returned', 500)
 
     return NextResponse.json({
       access_token: signIn.session.access_token,
@@ -121,6 +136,8 @@ Issued At: ${nonceRow.issued_at}`
       user_id: userId,
     })
   } catch (e) {
-    return fail(stage, e instanceof Error ? `${e.message}\n${e.stack}` : String(e))
+    return fail(stage, e instanceof Error ? `${e.message}` : String(e), 500, {
+      stack: e instanceof Error ? e.stack : undefined,
+    })
   }
 }
