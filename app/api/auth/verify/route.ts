@@ -27,6 +27,12 @@ export async function POST(req: Request) {
     if (new Date(nonceRow.expires_at) < new Date()) {
       return NextResponse.json({ error: 'Nonce expired' }, { status: 401 })
     }
+    if (!nonceRow.issued_at) {
+      return NextResponse.json(
+        { error: 'Stale nonce — please retry sign in' },
+        { status: 401 }
+      )
+    }
 
     const domain = req.headers.get('host') || 'splitchain.app'
     const message = `${domain} wants you to sign in with your Ethereum account:
@@ -38,7 +44,7 @@ URI: https://${domain}
 Version: 1
 Chain ID: 1
 Nonce: ${nonce}
-Issued At: ${nonceRow.created_at}`
+Issued At: ${nonceRow.issued_at}`
 
     let valid = false
     try {
