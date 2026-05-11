@@ -13,6 +13,7 @@ export async function POST(req: Request) {
     const checksummed = getAddress(address)
     const lower = checksummed.toLowerCase()
     const nonce = crypto.randomUUID().replace(/-/g, '')
+    const issuedAt = new Date().toISOString()
     const expires = new Date(Date.now() + 5 * 60 * 1000).toISOString()
 
     const db = createSupabaseServiceClient()
@@ -20,6 +21,7 @@ export async function POST(req: Request) {
       {
         wallet_address: lower,
         nonce,
+        issued_at: issuedAt,
         created_at: new Date().toISOString(),
         expires_at: expires,
       },
@@ -37,7 +39,7 @@ URI: https://${domain}
 Version: 1
 Chain ID: 1
 Nonce: ${nonce}
-Issued At: ${new Date().toISOString()}`
+Issued At: ${issuedAt}`
 
     return NextResponse.json({ nonce, message })
   } catch (e) {
