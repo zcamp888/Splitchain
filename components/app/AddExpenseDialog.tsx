@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { X, Loader2 } from 'lucide-react'
 import { useCreateExpense } from '@/lib/hooks/useExpenses'
-import { useToast } from '@/components/ui/Toaster'
+import { useToast } from '@/components/Toaster'
 import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 
 const CATEGORIES = ['food', 'travel', 'lodging', 'transport', 'entertainment', 'utilities', 'other']

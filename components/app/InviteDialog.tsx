@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { X, Loader2, Copy, Check, UserPlus, Link2, Send } from 'lucide-react'
-import { useToast } from '@/components/ui/Toaster'
+import { useToast } from '@/components/Toaster'
 
 export function InviteDialog({
   open,

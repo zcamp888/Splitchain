@@ -3,7 +3,7 @@
 import { Receipt, Trash2, Plus } from 'lucide-react'
 import { formatCurrency } from '@/lib/balances'
 import { useDeleteExpense } from '@/lib/hooks/useExpenses'
-import { useToast } from '@/components/ui/Toaster'
+import { useToast } from '@/components/Toaster'
 
 export function ExpenseList({
   groupId,
@@ -28,7 +28,7 @@ export function ExpenseList({
           <Receipt className="h-6 w-6" aria-hidden="true" />
         </div>
         <h3 className="font-display text-lg font-semibold">No expenses yet</h3>
-        <p className="mx-auto mt-1 max-w-sm text-sm text-fg-muted">Add your first expense and we'll track who owes what.</p>
+        <p className="mx-auto mt-1 max-w-sm text-sm text-fg-muted">Add your first expense and we&rsquo;ll track who owes what.</p>
         <button onClick={onAdd} className="btn-primary mt-5">
           <Plus className="h-4 w-4" aria-hidden="true" />
           Add expense
