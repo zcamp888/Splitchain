@@ -26,12 +26,52 @@ Rules:
 - If image is not a receipt or unreadable, return exactly: {"error": "not a receipt"}.
 - Output raw JSON only — no code fences, no commentary.`
 
+const MODEL_CANDIDATES = [
+  'gemini-2.0-flash',
+  'gemini-2.0-flash-001',
+  'gemini-flash-latest',
+  'gemini-1.5-flash-latest',
+]
+
 function stripCodeFences(s: string): string {
   let trimmed = s.trim()
   if (trimmed.startsWith('```')) {
     trimmed = trimmed.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '')
   }
   return trimmed.trim()
+}
+
+async function runGemini(apiKey: string, mimeType: string, base64: string) {
+  const genAI = new GoogleGenerativeAI(apiKey)
+  let lastError: Error | null = null
+
+  for (const modelName of MODEL_CANDIDATES) {
+    try {
+      const model = genAI.getGenerativeModel({
+        model: modelName,
+        generationConfig: {
+          temperature: 0.1,
+          maxOutputTokens: 2048,
+          responseMimeType: 'application/json',
+        },
+      })
+
+      const result = await model.generateContent([
+        { text: SYSTEM_PROMPT },
+        { inlineData: { mimeType, data: base64 } },
+      ])
+
+      return { text: result.response.text(), modelUsed: modelName }
+    } catch (e) {
+      lastError = e instanceof Error ? e : new Error(String(e))
+      // Only fall through on 404 (model retired); other errors abort
+      if (!lastError.message.includes('404') && !lastError.message.includes('not found')) {
+        throw lastError
+      }
+    }
+  }
+
+  throw lastError || new Error('All Gemini models failed')
 }
 
 export async function POST(req: Request) {
@@ -81,27 +121,12 @@ export async function POST(req: Request) {
         throw new Error('GEMINI_API_KEY not configured — add it in Vercel env vars')
       }
 
-      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
-      const model = genAI.getGenerativeModel({
-        model: 'gemini-1.5-flash',
-        generationConfig: {
-          temperature: 0.1,
-          maxOutputTokens: 2048,
-          responseMimeType: 'application/json',
-        },
-      })
+      const { text } = await runGemini(
+        process.env.GEMINI_API_KEY,
+        file.type,
+        buffer.toString('base64')
+      )
 
-      const result = await model.generateContent([
-        { text: SYSTEM_PROMPT },
-        {
-          inlineData: {
-            mimeType: file.type,
-            data: buffer.toString('base64'),
-          },
-        },
-      ])
-
-      const text = result.response.text()
       const clean = stripCodeFences(text)
       parsed = JSON.parse(clean)
 
