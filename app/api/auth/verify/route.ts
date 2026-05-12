@@ -1,6 +1,7 @@
 // @integration: supabase
 import { NextResponse } from 'next/server'
 import { isAddress, getAddress, verifyMessage } from 'viem'
+import { createHmac } from 'crypto'
 import { createSupabaseServiceClient } from '@/lib/supabase/server'
 
 export const runtime = 'nodejs'
@@ -11,6 +12,12 @@ function fail(stage: string, detail: string, status = 500, extra?: any) {
     { error: `${stage}: ${detail}`, extra: extra || null },
     { status }
   )
+}
+
+function derivePassword(secret: string, walletLower: string) {
+  // HMAC-SHA256 → 64 hex chars = 64 bytes, safely under bcrypt's 72-byte limit.
+  // Deterministic: same wallet + same secret → same password forever.
+  return createHmac('sha256', secret).update(walletLower).digest('hex')
 }
 
 export async function POST(req: Request) {
@@ -68,10 +75,12 @@ Issued At: ${nonceRow.issued_at}`
     stage = 'consume-nonce'
     await db.from('auth_nonces').delete().eq('wallet_address', lower)
 
+    stage = 'derive-password'
+    const secret = process.env.WALLET_AUTH_SECRET || 'dev-only-secret-do-not-use'
+    const password = derivePassword(secret, lower)
+
     stage = 'find-or-create-user'
     const syntheticEmail = `${lower}@wallet.splitchain.local`
-    const secret = process.env.WALLET_AUTH_SECRET || 'dev-only-secret-do-not-use'
-    const password = secret + lower
 
     let userId: string | null = null
 
