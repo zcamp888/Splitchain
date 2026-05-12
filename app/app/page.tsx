@@ -1,4 +1,4 @@
-import { GroupsDashboard } from '@/components/GroupsDashboard'
+import { GroupsDashboard } from '@/components/app/GroupsDashboard'
 
 export default function AppHomePage() {
   return <GroupsDashboard />

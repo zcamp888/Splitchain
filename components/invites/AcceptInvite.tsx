@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { Loader2, Check, X } from 'lucide-react'
-import { useToast } from '@/components/ui/Toaster'
+import { useToast } from '@/components/Toaster'
 
 export function AcceptInvite({
   token,
@@ -49,7 +49,7 @@ export function AcceptInvite({
   return (
     <div className="glass-strong w-full rounded-3xl p-8">
       <div className="text-5xl" aria-hidden="true">{groupEmoji}</div>
-      <h1 className="mt-4 font-display text-2xl font-bold tracking-tight text-balance">You're invited to {groupName}</h1>
+      <h1 className="mt-4 font-display text-2xl font-bold tracking-tight text-balance">You&rsquo;re invited to {groupName}</h1>
       {groupDescription && <p className="mt-2 text-sm text-fg-muted text-pretty">{groupDescription}</p>}
 
       {blocked ? (

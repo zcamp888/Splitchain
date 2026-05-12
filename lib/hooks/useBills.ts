@@ -1,4 +1,3 @@
-// @ts-nocheck
 // @integration: supabase
 'use client'
 
@@ -53,9 +52,7 @@ export function useCreateBill() {
       if (error) throw error
       return data
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['bills'] })
-    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['bills'] }),
   })
 }
 
@@ -64,12 +61,13 @@ export function useToggleBillPaid() {
   return useMutation({
     mutationFn: async ({ id, paid }: { id: string; paid: boolean }) => {
       const supabase = createSupabaseBrowserClient()
-      const { error } = await supabase.from('bills').update({ paid }).eq('id', id)
+      const { error } = await supabase
+        .from('bills')
+        .update({ paid, paid_at: paid ? new Date().toISOString() : null })
+        .eq('id', id)
       if (error) throw error
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['bills'] })
-    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['bills'] }),
   })
 }
 
@@ -81,8 +79,6 @@ export function useDeleteBill() {
       const { error } = await supabase.from('bills').delete().eq('id', id)
       if (error) throw error
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['bills'] })
-    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['bills'] }),
   })
 }

@@ -3,13 +3,13 @@
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
 import { ArrowLeft, UserPlus, Loader2, Receipt as ReceiptIcon, Wallet, TrendingUp, CheckCircle2 } from 'lucide-react'
-import { useGroupDetail, useGroupExpenses, useGroupSettlements } from '@/lib/hooks/useGroups'
-import { useCreateSettlement } from '@/lib/hooks/useSettlements'
+import { useGroupDetail, useGroupExpenses, useGroupSettlements } from '@/lib/hooks'
+import { useCreateSettlement } from '@/lib/hooks'
 import { computeBalances, suggestTransfers, formatCurrency } from '@/lib/balances'
 import { InviteDialog } from '@/components/app/InviteDialog'
-import { ExpenseList } from '@/components/app/ExpenseList'
-import { AddExpenseDialog } from '@/components/app/AddExpenseDialog'
-import { useToast } from '@/components/ui/Toaster'
+import { ExpenseList } from '@/components/ExpenseList'
+import { AddExpenseDialog } from '@/components/AddExpenseDialog'
+import { useToast } from '@/components/Toaster'
 
 export function GroupDetail({ groupId }: { groupId: string }) {
   const { data: group, isLoading } = useGroupDetail(groupId)
@@ -53,7 +53,6 @@ export function GroupDetail({ groupId }: { groupId: string }) {
         to_user: to,
         amount,
         currency: group?.currency || 'USD',
-        status: 'confirmed',
       })
       push({ kind: 'success', message: 'Marked as settled' })
     } catch (e) {
@@ -121,7 +120,8 @@ export function GroupDetail({ groupId }: { groupId: string }) {
             const bal = balances.find((b) => b.user_id === m.user_id)?.net || 0
             const positive = bal > 0.01
             const negative = bal < -0.01
-            const label = m.profile?.display_name || m.profile?.ens_name || (m.profile?.wallet_address ? `${m.profile.wallet_address.slice(0, 6)}…${m.profile.wallet_address.slice(-4)}` : 'Member')
+            const wallet = m.profile?.wallet_address
+            const label = m.profile?.display_name || m.profile?.email || (wallet ? `${wallet.slice(0, 6)}…${wallet.slice(-4)}` : 'Member')
             return (
               <div key={m.user_id} className="flex items-center gap-2 rounded-full border border-border-strong bg-bg-elev/60 px-3 py-1.5 text-xs">
                 <span className="font-medium">{label}</span>
@@ -146,8 +146,8 @@ export function GroupDetail({ groupId }: { groupId: string }) {
             {transfers.map((t, i) => {
               const from = memberMap.get(t.from)
               const to = memberMap.get(t.to)
-              const fromLabel = from?.display_name || from?.ens_name || 'Member'
-              const toLabel = to?.display_name || to?.ens_name || 'Member'
+              const fromLabel = from?.display_name || from?.email || 'Member'
+              const toLabel = to?.display_name || to?.email || 'Member'
               return (
                 <li key={i} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-bg-elev/40 px-4 py-3 text-sm">
                   <div className="flex min-w-0 items-center gap-2">

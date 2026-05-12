@@ -6,15 +6,15 @@ export default async function InvitePage({ params }: { params: { token: string }
   const supabase = createSupabaseServerClient()
   const { data: { user } } = await supabase.auth.getUser()
 
+  if (!user) {
+    redirect(`/auth?invite=${params.token}`)
+  }
+
   const { data: invite } = await supabase
     .from('group_invites')
     .select('id, group_id, expires_at, accepted_by, groups:group_id(name, cover_emoji, description)')
     .eq('token', params.token)
     .maybeSingle()
-
-  if (!user) {
-    redirect(`/auth?invite=${params.token}`)
-  }
 
   if (!invite) {
     return (

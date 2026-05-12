@@ -7,8 +7,11 @@
    - `Project URL` → `NEXT_PUBLIC_SUPABASE_URL`
    - `anon public` → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - `service_role` → `SUPABASE_SERVICE_ROLE_KEY` ⚠️ never expose to browser
-3. **SQL Editor** — paste `supabase/migrations/0001_init.sql` and run.
+3. **SQL Editor** — run migrations **in order**:
+   - `supabase/migrations/0001_init.sql`
+   - `supabase/migrations/0002_wave3.sql`
 4. **Database → Replication** — confirm `expenses`, `expense_splits`, `settlements`, `group_members` are enabled on `supabase_realtime`.
+5. **Storage** — confirm a private bucket named `receipts` exists (created by `0002_wave3.sql`).
 
 ## 2. Wallet auth secret
 
@@ -26,14 +29,20 @@ openssl rand -hex 32
 
 [alchemy.com](https://alchemy.com) → enable Base, Polygon, Mainnet, Optimism → `NEXT_PUBLIC_ALCHEMY_KEY`.
 
-## 5. Run
+Used for ENS resolution and on-chain reads.
+
+## 5. OpenAI (for receipt OCR)
+
+[platform.openai.com](https://platform.openai.com) → API keys → `OPENAI_API_KEY`. Uses **GPT-4o** vision for receipt parsing.
+
+## 6. Run
 
 ```bash
 npm install
 npm run dev
 ```
 
-## 6. Deploy to Vercel
+## 7. Deploy to Vercel
 
 1. Push to GitHub.
 2. Import on [vercel.com](https://vercel.com).
@@ -44,14 +53,15 @@ npm run dev
 ## What ships now
 
 - ✅ SIWE + email auth
-- ✅ Groups, members, invites (link + ENS/wallet/email)
+- ✅ Groups, members, realtime sync
 - ✅ Expenses with equal/exact splits
-- ✅ Realtime sync
 - ✅ Balance engine + minimum-transfer settlement suggestions
-- ✅ Off-chain "mark as paid"
+- ✅ Shareable invite links + ENS / wallet / email direct invites
+- ✅ GPT-4o receipt OCR (merchant, date, items, total)
+- ✅ Personal bills tracker (recurring, due dates, paid toggle)
 
-## Coming in Wave 3
+## Coming in Wave 4
 
-- GPT-4o receipt OCR
 - On-chain settlements (native + USDC on Base/Polygon)
-- Personal bills tracking
+- Receipt → expense one-click creation
+- Group settings, expense edit, member removal

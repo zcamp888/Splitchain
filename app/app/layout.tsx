@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { getServerUser } from '@/lib/supabase/server'
-import { AppShell } from '@/components/AppShell'
+import { AppShell } from '@/components/app/AppShell'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await getServerUser()

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { X, Loader2, Copy, Check, UserPlus } from 'lucide-react'
+import { X, Loader2, Copy, Check, UserPlus, Link2, Send } from 'lucide-react'
 import { useToast } from '@/components/ui/Toaster'
 
 export function InviteDialog({
@@ -69,7 +69,7 @@ export function InviteDialog({
       let invited_email: string | undefined
 
       if (trimmed.includes('@') && !trimmed.endsWith('.eth')) {
-        invited_email = trimmed
+        invited_email = trimmed.toLowerCase()
       } else {
         const ensRes = await fetch('/api/ens/resolve', {
           method: 'POST',
@@ -123,7 +123,7 @@ export function InviteDialog({
         <div className="flex items-start justify-between">
           <div>
             <h2 id="invite-title" className="font-display text-xl font-bold tracking-tight">Invite to {groupName}</h2>
-            <p className="mt-1 text-xs text-fg-muted">Share a link or invite by ENS / wallet / email.</p>
+            <p className="mt-1 text-xs text-fg-muted">Share a link or invite by ENS, wallet, or email.</p>
           </div>
           <button onClick={onClose} className="text-fg-muted hover:text-fg" aria-label="Close dialog">
             <X className="h-5 w-5" aria-hidden="true" />
@@ -132,10 +132,12 @@ export function InviteDialog({
 
         <div className="mt-5 grid grid-cols-2 gap-1 rounded-xl border border-border-strong bg-bg-elev/40 p-1">
           <button onClick={() => { setMode('link'); setLink(null) }} className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${mode === 'link' ? 'bg-bg-card text-fg' : 'text-fg-muted hover:text-fg'}`}>
-            Shareable link
+            <Link2 className="mr-1.5 inline h-4 w-4" aria-hidden="true" />
+            Link
           </button>
           <button onClick={() => { setMode('direct'); setLink(null) }} className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${mode === 'direct' ? 'bg-bg-card text-fg' : 'text-fg-muted hover:text-fg'}`}>
-            Direct invite
+            <Send className="mr-1.5 inline h-4 w-4" aria-hidden="true" />
+            Direct
           </button>
         </div>
 
@@ -158,7 +160,7 @@ export function InviteDialog({
             ) : (
               <>
                 <div className="rounded-xl border border-border-strong bg-bg-elev/60 px-3 py-2.5">
-                  <div className="text-xs text-fg-dim">Invite link (expires in 7 days)</div>
+                  <div className="text-xs text-fg-dim">Invite link (expires in 7&nbsp;days)</div>
                   <div className="mt-1 break-all font-mono text-xs">{link}</div>
                 </div>
                 <button onClick={copy} className="btn-ghost w-full">
@@ -186,7 +188,7 @@ export function InviteDialog({
                 name="recipient"
                 value={recipient}
                 onChange={(e) => setRecipient(e.target.value)}
-                placeholder="vitalik.eth or 0x… or you@example.com"
+                placeholder="vitalik.eth, 0x…, or you@example.com"
                 autoComplete="off"
                 spellCheck={false}
                 className="input-base font-mono text-sm"

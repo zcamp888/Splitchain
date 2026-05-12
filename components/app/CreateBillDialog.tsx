@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { X, Loader2 } from 'lucide-react'
 import { useCreateBill } from '@/lib/hooks/useBills'
-import { useToast } from '@/components/ui/Toaster'
+import { useToast } from '@/components/Toaster'
 
 const CATEGORIES = ['rent', 'utilities', 'subscription', 'insurance', 'loan', 'other']
 const CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD']
@@ -54,8 +54,7 @@ export function CreateBillDialog({ open, onClose }: { open: boolean; onClose: ()
       push({ kind: 'success', message: 'Bill added' })
       onClose()
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Failed'
-      push({ kind: 'error', message: msg })
+      push({ kind: 'error', message: e instanceof Error ? e.message : 'Failed' })
     }
   }
 

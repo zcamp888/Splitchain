@@ -3,7 +3,7 @@
 import { useRef, useState } from 'react'
 import { Upload, Loader2, Receipt as ReceiptIcon, Trash2, CheckCircle2, AlertCircle, Eye, Sparkles } from 'lucide-react'
 import { useMyReceipts, useUploadReceipt, useDeleteReceipt, getReceiptUrl } from '@/lib/hooks/useReceipts'
-import { useToast } from '@/components/ui/Toaster'
+import { useToast } from '@/components/Toaster'
 import { formatCurrency } from '@/lib/balances'
 
 export function ReceiptsView() {
@@ -27,8 +27,7 @@ export function ReceiptsView() {
           push({ kind: 'info', message: 'Uploaded, but OCR could not parse it' })
         }
       } catch (e) {
-        const msg = e instanceof Error ? e.message : 'Upload failed'
-        push({ kind: 'error', message: msg })
+        push({ kind: 'error', message: e instanceof Error ? e.message : 'Upload failed' })
       }
     }
   }
@@ -39,8 +38,7 @@ export function ReceiptsView() {
       await del.mutateAsync(id)
       push({ kind: 'success', message: 'Removed' })
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Failed'
-      push({ kind: 'error', message: msg })
+      push({ kind: 'error', message: e instanceof Error ? e.message : 'Failed' })
     }
   }
 
@@ -50,8 +48,7 @@ export function ReceiptsView() {
       const url = await getReceiptUrl(id)
       setPreviewUrl(url)
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Failed'
-      push({ kind: 'error', message: msg })
+      push({ kind: 'error', message: e instanceof Error ? e.message : 'Failed' })
     } finally {
       setPreviewLoading(false)
     }
@@ -61,7 +58,7 @@ export function ReceiptsView() {
     <div>
       <header className="mb-8">
         <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">Receipts</h1>
-        <p className="mt-1 text-sm text-fg-muted">Upload an image — GPT-4o reads it for you.</p>
+        <p className="mt-1 text-sm text-fg-muted">Upload an image — GPT&#8209;4o reads it for you.</p>
       </header>
 
       <div
@@ -90,7 +87,7 @@ export function ReceiptsView() {
           <Sparkles className="h-7 w-7 text-neon-cyan" aria-hidden="true" />
         </div>
         <h2 className="font-display text-lg font-semibold">Drop a receipt</h2>
-        <p className="mt-1 text-sm text-fg-muted">PNG, JPG, HEIC up to 10 MB</p>
+        <p className="mt-1 text-sm text-fg-muted">PNG, JPG, HEIC up to 10&nbsp;MB</p>
         <button
           onClick={() => fileRef.current?.click()}
           disabled={upload.isPending}

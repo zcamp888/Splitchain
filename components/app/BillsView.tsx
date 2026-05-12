@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Plus, Loader2, Calendar, Trash2, Check, AlertCircle } from 'lucide-react'
 import { useBills, useToggleBillPaid, useDeleteBill } from '@/lib/hooks/useBills'
 import { CreateBillDialog } from '@/components/app/CreateBillDialog'
-import { useToast } from '@/components/ui/Toaster'
+import { useToast } from '@/components/Toaster'
 import { formatCurrency } from '@/lib/balances'
 
 export function BillsView() {
@@ -18,8 +18,7 @@ export function BillsView() {
     try {
       await toggle.mutateAsync({ id, paid: !paid })
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Failed'
-      push({ kind: 'error', message: msg })
+      push({ kind: 'error', message: e instanceof Error ? e.message : 'Failed' })
     }
   }
 
@@ -29,8 +28,7 @@ export function BillsView() {
       await del.mutateAsync(id)
       push({ kind: 'success', message: 'Bill removed' })
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Failed'
-      push({ kind: 'error', message: msg })
+      push({ kind: 'error', message: e instanceof Error ? e.message : 'Failed' })
     }
   }
 
@@ -77,12 +75,12 @@ export function BillsView() {
         </div>
       ) : !bills || bills.length === 0 ? (
         <div className="glass rounded-2xl p-12 text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-neon-pink/10 text-neon-pink">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-neon-cyan/10 text-neon-cyan">
             <Calendar className="h-6 w-6" aria-hidden="true" />
           </div>
           <h2 className="font-display text-xl font-semibold">No bills yet</h2>
           <p className="mx-auto mt-2 max-w-sm text-sm text-fg-muted">
-            Track rent, utilities, subscriptions — whatever you don't want to forget.
+            Track rent, utilities, subscriptions — whatever you don&rsquo;t want to forget.
           </p>
           <button onClick={() => setShowCreate(true)} className="btn-primary mt-6">
             <Plus className="h-4 w-4" aria-hidden="true" />

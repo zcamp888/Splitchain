@@ -1,4 +1,5 @@
 // @integration: supabase
+// @integration: openai
 'use client'
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
