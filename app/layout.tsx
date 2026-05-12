@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Sora, Space_Grotesk, JetBrains_Mono } from 'next/font/google'
 import { Providers } from '@/components/Providers'
+import { ServiceWorkerRegister } from '@/components/ServiceWorkerRegister'
 import './globals.css'
 
 const sora = Sora({ subsets: ['latin'], variable: '--font-display', display: 'swap' })
@@ -10,6 +11,12 @@ const jetbrains = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono', 
 export const metadata: Metadata = {
   title: 'SplitChain — Web3-native expense splitting',
   description: 'Split expenses with friends. Settle anywhere.',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'SplitChain',
+  },
 }
 
 export const viewport: Viewport = {
@@ -37,7 +44,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div className="absolute top-1/3 -right-40 h-[600px] w-[600px] rounded-full bg-neon-cyan/15 blur-[140px]" />
           <div className="absolute bottom-0 left-1/3 h-[400px] w-[400px] rounded-full bg-neon-lime/10 blur-[120px]" />
         </div>
-        <Providers>{children}</Providers>
+        <Providers>
+          <ServiceWorkerRegister />
+          {children}
+        </Providers>
       </body>
     </html>
   )
