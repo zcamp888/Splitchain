@@ -4,6 +4,14 @@ import { useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 
+async function requireSession() {
+  const supabase = createSupabaseBrowserClient()
+  // Force-load session from storage before any RLS-protected write.
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session?.user) throw new Error('Not authenticated — please sign in again')
+  return { supabase, user: session.user }
+}
+
 export function useGroups() {
   return useQuery({
     queryKey: ['groups'],
@@ -28,9 +36,18 @@ export function useCreateGroup() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (input: { name: string; description?: string; currency?: string; cover_emoji?: string }) => {
-      const supabase = createSupabaseBrowserClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('Not authenticated')
+      const { supabase, user } = await requireSession()
+
+      // Ensure profile row exists before FK insert (wallet users may race
+      // ahead of the handle_new_user trigger).
+      await supabase.from('profiles').upsert(
+        {
+          id: user.id,
+          email: user.email || null,
+          wallet_address: (user.user_metadata as any)?.wallet_address || null,
+        },
+        { onConflict: 'id' }
+      )
 
       const { data: group, error } = await supabase
         .from('groups')
@@ -43,14 +60,18 @@ export function useCreateGroup() {
         })
         .select()
         .single()
-      if (error) throw error
+      if (error) throw new Error(`Group insert: ${error.message}`)
 
       const { error: memberErr } = await supabase.from('group_members').insert({
         group_id: group.id,
         user_id: user.id,
         role: 'owner',
       })
-      if (memberErr) throw memberErr
+      if (memberErr) {
+        // Roll back the orphaned group so the user can retry cleanly.
+        await supabase.from('groups').delete().eq('id', group.id)
+        throw new Error(`Member insert: ${memberErr.message}`)
+      }
 
       return group
     },
@@ -90,9 +111,7 @@ export function useLeaveGroup() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (groupId: string) => {
-      const supabase = createSupabaseBrowserClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('Not authenticated')
+      const { supabase, user } = await requireSession()
       const { error } = await supabase.from('group_members').delete().eq('group_id', groupId).eq('user_id', user.id)
       if (error) throw error
     },
@@ -212,7 +231,7 @@ export function useCreateExpense(groupId: string) {
       paid_by: string
       splits: { user_id: string; share_amount: number; share_type?: string }[]
     }) => {
-      const supabase = createSupabaseBrowserClient()
+      const { supabase } = await requireSession()
 
       const splitsTotal = input.splits.reduce((s, x) => s + x.share_amount, 0)
       if (Math.abs(splitsTotal - input.amount) > 0.01) {
@@ -332,7 +351,7 @@ export function useCreateSettlement(groupId: string) {
       from_address?: string | null
       to_address?: string | null
     }) => {
-      const supabase = createSupabaseBrowserClient()
+      const { supabase } = await requireSession()
       const status = input.status || 'confirmed'
       const { data, error } = await supabase
         .from('settlements')
