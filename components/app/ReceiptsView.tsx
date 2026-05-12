@@ -1,10 +1,11 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { Upload, Loader2, Receipt as ReceiptIcon, Trash2, CheckCircle2, AlertCircle, Eye, Sparkles, CreditCard } from 'lucide-react'
+import { Upload, Loader2, Receipt as ReceiptIcon, Trash2, CheckCircle2, AlertCircle, Eye, Sparkles, CreditCard, Wand2 } from 'lucide-react'
 import { useMyReceipts, useUploadReceipt, useDeleteReceipt, getReceiptUrl } from '@/lib/hooks/useReceipts'
 import { useToast } from '@/components/Toaster'
 import { formatCurrency } from '@/lib/balances'
+import { ReceiptToExpenseDialog } from '@/components/app/ReceiptToExpenseDialog'
 
 function friendlyError(raw: string | null | undefined): { kind: 'quota' | 'config' | 'parse' | 'other'; message: string } {
   if (!raw) return { kind: 'other', message: 'Could not parse this receipt.' }
@@ -30,6 +31,7 @@ export function ReceiptsView() {
   const [dragOver, setDragOver] = useState(false)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [previewLoading, setPreviewLoading] = useState(false)
+  const [convertReceipt, setConvertReceipt] = useState<any | null>(null)
 
   const handleFiles = async (files: FileList | null) => {
     if (!files || files.length === 0) return
@@ -74,7 +76,7 @@ export function ReceiptsView() {
     <div>
       <header className="mb-8">
         <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">Receipts</h1>
-        <p className="mt-1 text-sm text-fg-muted">Upload an image &mdash; Gemini reads it for you.</p>
+        <p className="mt-1 text-sm text-fg-muted">Upload an image &mdash; Gemini reads it, then split it with one click.</p>
       </header>
 
       <div
@@ -209,6 +211,13 @@ export function ReceiptsView() {
                           )}
                         </div>
                       )}
+                      <button
+                        onClick={() => setConvertReceipt(r)}
+                        className="mt-4 inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-gradient-to-br from-neon-violet/20 to-neon-cyan/20 border border-neon-violet/30 px-3 py-2 text-xs font-medium text-fg transition-all hover:from-neon-violet/30 hover:to-neon-cyan/30 hover:border-neon-violet/50"
+                      >
+                        <Wand2 className="h-3.5 w-3.5 text-neon-cyan" aria-hidden="true" />
+                        Create expense from this
+                      </button>
                     </>
                   ) : (
                     <div className="mt-3 text-sm text-fg-muted">{err.message}</div>
@@ -245,6 +254,14 @@ export function ReceiptsView() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg/80 backdrop-blur-sm">
           <Loader2 className="h-6 w-6 animate-spin text-neon-cyan" aria-hidden="true" />
         </div>
+      )}
+
+      {convertReceipt && (
+        <ReceiptToExpenseDialog
+          open={!!convertReceipt}
+          onClose={() => setConvertReceipt(null)}
+          receipt={convertReceipt}
+        />
       )}
     </div>
   )
