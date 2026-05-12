@@ -1,7 +1,7 @@
-// SplitChain service worker — push notifications + basic offline shell
-const CACHE_VERSION = 'sc-v1'
+// SplitChain service worker — push notifications
+const CACHE_VERSION = 'sc-v2'
 
-self.addEventListener('install', (event) => {
+self.addEventListener('install', () => {
   self.skipWaiting()
 })
 
@@ -27,8 +27,8 @@ self.addEventListener('push', (event) => {
   const title = payload.title || 'SplitChain'
   const options = {
     body: payload.body || '',
-    icon: '/icon-192.png',
-    badge: '/icon-192.png',
+    icon: '/icon',
+    badge: '/icon',
     tag: payload.tag || 'splitchain',
     data: { url: payload.url || '/app' },
     requireInteraction: false,
@@ -44,13 +44,11 @@ self.addEventListener('notificationclick', (event) => {
 
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      // Focus existing window if open
       for (const client of clientList) {
         if (client.url.includes(targetUrl) && 'focus' in client) {
           return client.focus()
         }
       }
-      // Otherwise open new window
       if (self.clients.openWindow) {
         return self.clients.openWindow(targetUrl)
       }
