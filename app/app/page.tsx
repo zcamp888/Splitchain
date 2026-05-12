@@ -1,5 +1,5 @@
-import { GroupsDashboard } from '@/components/app/GroupsDashboard'
+import { PersonalDashboard } from '@/components/app/PersonalDashboard'
 
 export default function AppHomePage() {
-  return <GroupsDashboard />
+  return <PersonalDashboard />
 }
