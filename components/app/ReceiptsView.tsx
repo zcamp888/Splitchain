@@ -1,10 +1,25 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { Upload, Loader2, Receipt as ReceiptIcon, Trash2, CheckCircle2, AlertCircle, Eye, Sparkles } from 'lucide-react'
+import { Upload, Loader2, Receipt as ReceiptIcon, Trash2, CheckCircle2, AlertCircle, Eye, Sparkles, CreditCard } from 'lucide-react'
 import { useMyReceipts, useUploadReceipt, useDeleteReceipt, getReceiptUrl } from '@/lib/hooks/useReceipts'
 import { useToast } from '@/components/Toaster'
 import { formatCurrency } from '@/lib/balances'
+
+function friendlyError(raw: string | null | undefined): { kind: 'quota' | 'config' | 'parse' | 'other'; message: string } {
+  if (!raw) return { kind: 'other', message: 'Could not parse this receipt.' }
+  const lower = raw.toLowerCase()
+  if (lower.includes('quota') || lower.includes('429') || lower.includes('billing')) {
+    return { kind: 'quota', message: 'OpenAI quota exceeded. Add credits at platform.openai.com/billing.' }
+  }
+  if (lower.includes('not configured') || lower.includes('api_key') || lower.includes('api key')) {
+    return { kind: 'config', message: 'OpenAI API key not configured.' }
+  }
+  if (lower.includes('not a receipt') || lower.includes('could not extract')) {
+    return { kind: 'parse', message: 'Image doesn\u2019t look like a receipt, or text is unreadable.' }
+  }
+  return { kind: 'other', message: raw }
+}
 
 export function ReceiptsView() {
   const { data: receipts, isLoading } = useMyReceipts()
@@ -24,7 +39,8 @@ export function ReceiptsView() {
         if (r.ocr_status === 'success') {
           push({ kind: 'success', message: 'Receipt scanned with AI' })
         } else {
-          push({ kind: 'info', message: 'Uploaded, but OCR could not parse it' })
+          const f = friendlyError(r.error_message)
+          push({ kind: f.kind === 'quota' || f.kind === 'config' ? 'error' : 'info', message: f.message })
         }
       } catch (e) {
         push({ kind: 'error', message: e instanceof Error ? e.message : 'Upload failed' })
@@ -58,7 +74,7 @@ export function ReceiptsView() {
     <div>
       <header className="mb-8">
         <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">Receipts</h1>
-        <p className="mt-1 text-sm text-fg-muted">Upload an image — GPT&#8209;4o reads it for you.</p>
+        <p className="mt-1 text-sm text-fg-muted">Upload an image &mdash; GPT&#8209;4o reads it for you.</p>
       </header>
 
       <div
@@ -96,7 +112,7 @@ export function ReceiptsView() {
           {upload.isPending ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-              Scanning…
+              Scanning&hellip;
             </>
           ) : (
             <>
@@ -115,13 +131,14 @@ export function ReceiptsView() {
           </div>
         ) : !receipts || receipts.length === 0 ? (
           <div className="glass rounded-2xl p-10 text-center text-sm text-fg-muted">
-            No receipts yet — upload your first one above.
+            No receipts yet &mdash; upload your first one above.
           </div>
         ) : (
           <ul className="grid gap-3 sm:grid-cols-2">
             {receipts.map((r: any) => {
               const p = r.parsed_json || {}
               const success = r.ocr_status === 'success'
+              const err = friendlyError(r.error_message)
               return (
                 <li key={r.id} className="glass group rounded-2xl p-5 transition-all hover:-translate-y-0.5 hover:border-neon-cyan/30">
                   <div className="flex items-start justify-between gap-3">
@@ -135,6 +152,11 @@ export function ReceiptsView() {
                         <span className="inline-flex items-center gap-1 rounded-full border border-neon-cyan/30 bg-neon-cyan/10 px-2 py-0.5 text-neon-cyan">
                           <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
                           Pending
+                        </span>
+                      ) : err.kind === 'quota' ? (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-neon-violet/30 bg-neon-violet/10 px-2 py-0.5 text-neon-violet">
+                          <CreditCard className="h-3 w-3" aria-hidden="true" />
+                          Billing
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 rounded-full border border-danger/30 bg-danger/10 px-2 py-0.5 text-danger">
@@ -167,9 +189,9 @@ export function ReceiptsView() {
                         {p.merchant || 'Unknown merchant'}
                       </div>
                       <div className="mt-1 flex items-baseline justify-between">
-                        <span className="text-xs text-fg-muted">{p.date || '—'}</span>
+                        <span className="text-xs text-fg-muted">{p.date || '\u2014'}</span>
                         <span className="tabular font-mono text-lg font-semibold">
-                          {typeof p.total === 'number' ? formatCurrency(p.total, p.currency || 'USD') : '—'}
+                          {typeof p.total === 'number' ? formatCurrency(p.total, p.currency || 'USD') : '\u2014'}
                         </span>
                       </div>
                       {p.items && p.items.length > 0 && (
@@ -189,9 +211,7 @@ export function ReceiptsView() {
                       )}
                     </>
                   ) : (
-                    <div className="mt-3 text-sm text-fg-muted">
-                      {r.error_message || 'Could not parse this receipt.'}
-                    </div>
+                    <div className="mt-3 text-sm text-fg-muted">{err.message}</div>
                   )}
 
                   <div className="mt-3 flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-fg-dim">
