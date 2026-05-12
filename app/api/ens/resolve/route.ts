@@ -1,5 +1,3 @@
-// @ts-nocheck
-/* eslint-disable */
 import { NextResponse } from 'next/server'
 import { createPublicClient, http, isAddress, getAddress } from 'viem'
 import { mainnet } from 'viem/chains'
@@ -7,7 +5,7 @@ import { normalize } from 'viem/ens'
 
 const alchemyKey = process.env.NEXT_PUBLIC_ALCHEMY_KEY || ''
 
-export async function POST(req: any) {
+export async function POST(req: Request) {
   try {
     const { input } = await req.json()
     if (!input || typeof input !== 'string') {
@@ -34,7 +32,7 @@ export async function POST(req: any) {
     }
 
     return NextResponse.json({ address: getAddress(address), ens: trimmed })
-  } catch (e: any) {
+  } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'ENS resolution failed' }, { status: 500 })
   }
 }

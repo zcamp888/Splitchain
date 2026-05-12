@@ -3,12 +3,14 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import type { User } from '@supabase/supabase-js'
-import { Home, Receipt, CreditCard, LogOut, Wallet } from 'lucide-react'
-import { createSupabaseBrowserClient } from '@/lib/supabase/client'
+import { Home, Receipt, CreditCard, LogOut, Wallet, Activity } from 'lucide-react'
 import { useDisconnect } from 'wagmi'
+import { createSupabaseBrowserClient } from '@/lib/supabase/client'
+import { NotificationBell } from '@/components/app/NotificationBell'
 
 const navItems = [
   { href: '/app', label: 'Groups', icon: Home },
+  { href: '/app/activity', label: 'Activity', icon: Activity },
   { href: '/app/bills', label: 'My bills', icon: CreditCard },
   { href: '/app/receipts', label: 'Receipts', icon: Receipt },
 ]
@@ -17,7 +19,7 @@ export function AppShell({ user, children }: { user: User; children: React.React
   const pathname = usePathname()
   const router = useRouter()
   const { disconnect } = useDisconnect()
-  const wallet = (user.user_metadata as { wallet_address?: string } | null)?.wallet_address
+  const wallet = (user.user_metadata as any)?.wallet_address as string | undefined
 
   const handleSignOut = async () => {
     const supabase = createSupabaseBrowserClient()
@@ -30,15 +32,18 @@ export function AppShell({ user, children }: { user: User; children: React.React
   return (
     <div className="flex min-h-screen">
       <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-border/60 bg-bg-elev/40 backdrop-blur-xl lg:flex">
-        <div className="px-6 py-6">
+        <div className="flex items-center justify-between px-6 py-6">
           <Link href="/" className="flex items-center gap-2 font-display text-lg font-bold tracking-tight">
             <span className="inline-block h-2 w-2 rounded-full bg-neon-lime shadow-[0_0_12px_rgb(163,230,53)]" aria-hidden="true" />
             SplitChain
           </Link>
+          <NotificationBell />
         </div>
         <nav className="flex-1 px-3">
           {navItems.map(({ href, label, icon: Icon }) => {
-            const active = pathname === href || (href !== '/app' && pathname.startsWith(href))
+            const active = href === '/app'
+              ? pathname === '/app' || pathname.startsWith('/app/groups')
+              : pathname.startsWith(href)
             return (
               <Link
                 key={href}
@@ -69,6 +74,35 @@ export function AppShell({ user, children }: { user: User; children: React.React
           </button>
         </div>
       </aside>
+
+      <header className="lg:hidden sticky top-0 z-40 glass border-b border-border/50 px-4 py-3 flex items-center justify-between">
+        <Link href="/" className="flex items-center gap-2 font-display font-bold">
+          <span className="inline-block h-2 w-2 rounded-full bg-neon-lime" aria-hidden="true" />
+          SplitChain
+        </Link>
+        <nav className="flex items-center gap-1">
+          {navItems.map(({ href, label, icon: Icon }) => {
+            const active = href === '/app'
+              ? pathname === '/app' || pathname.startsWith('/app/groups')
+              : pathname.startsWith(href)
+            return (
+              <Link
+                key={href}
+                href={href}
+                aria-label={label}
+                className={`rounded-lg p-2 transition-colors ${active ? 'text-neon-violet' : 'text-fg-muted hover:text-fg'}`}
+              >
+                <Icon className="h-4 w-4" aria-hidden="true" />
+              </Link>
+            )
+          })}
+          <NotificationBell />
+          <button onClick={handleSignOut} className="rounded-lg p-2 text-fg-muted hover:text-fg" aria-label="Sign out">
+            <LogOut className="h-4 w-4" aria-hidden="true" />
+          </button>
+        </nav>
+      </header>
+
       <main className="flex-1">
         <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-10 lg:py-10">{children}</div>
       </main>

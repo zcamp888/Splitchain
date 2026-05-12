@@ -1,10 +1,9 @@
-// @ts-nocheck
 // @integration: supabase
 import { NextResponse } from 'next/server'
 import { createSupabaseServerClient, createSupabaseServiceClient } from '@/lib/supabase/server'
 import { isAddress, getAddress } from 'viem'
 
-export async function POST(req) {
+export async function POST(req: Request) {
   try {
     const supabase = createSupabaseServerClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -18,10 +17,10 @@ export async function POST(req) {
       .select('role')
       .eq('group_id', group_id)
       .eq('user_id', user.id)
-      .single()
+      .maybeSingle()
     if (!membership) return NextResponse.json({ error: 'Not a member' }, { status: 403 })
 
-    let walletNorm = null
+    let walletNorm: string | null = null
     if (invited_wallet) {
       if (!isAddress(invited_wallet)) {
         return NextResponse.json({ error: 'Invalid wallet address' }, { status: 400 })
@@ -32,55 +31,60 @@ export async function POST(req) {
     const token = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '').slice(0, 16)
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
 
-    const invitePayload = {
-      group_id: group_id,
-      token: token,
-      created_by: user.id,
-      invited_wallet: walletNorm,
-      invited_email: invited_email || null,
-      expires_at: expiresAt,
-    }
-
     const { data: invite, error } = await supabase
       .from('group_invites')
-      .insert(invitePayload)
+      .insert({
+        group_id,
+        token,
+        created_by: user.id,
+        invited_wallet: walletNorm,
+        invited_email: invited_email || null,
+        expires_at: expiresAt,
+      })
       .select()
       .single()
     if (error) throw error
 
+    // Auto-add if the invited wallet OR email already has a profile
+    const service = createSupabaseServiceClient()
+    let existingProfileId: string | null = null
+
     if (walletNorm) {
-      const service = createSupabaseServiceClient()
-      const { data: existingProfile } = await service
+      const { data: p } = await service
         .from('profiles')
         .select('id')
         .eq('wallet_address', walletNorm)
         .maybeSingle()
+      if (p) existingProfileId = p.id
+    } else if (invited_email) {
+      const { data: p } = await service
+        .from('profiles')
+        .select('id')
+        .eq('email', invited_email)
+        .maybeSingle()
+      if (p) existingProfileId = p.id
+    }
 
-      if (existingProfile) {
-        const { data: alreadyMember } = await service
-          .from('group_members')
-          .select('user_id')
-          .eq('group_id', group_id)
-          .eq('user_id', existingProfile.id)
-          .maybeSingle()
+    if (existingProfileId) {
+      const { data: alreadyMember } = await service
+        .from('group_members')
+        .select('user_id')
+        .eq('group_id', group_id)
+        .eq('user_id', existingProfileId)
+        .maybeSingle()
 
-        if (!alreadyMember) {
-          const memberPayload = {
-            group_id: group_id,
-            user_id: existingProfile.id,
-            role: 'member',
-            joined_at: new Date().toISOString(),
-          }
-          await service.from('group_members').insert(memberPayload)
+      if (!alreadyMember) {
+        await service.from('group_members').insert({
+          group_id,
+          user_id: existingProfileId,
+          role: 'member',
+        })
+        await service.from('group_invites').update({
+          accepted_by: existingProfileId,
+          accepted_at: new Date().toISOString(),
+        }).eq('id', invite.id)
 
-          const acceptPayload = {
-            accepted_by: existingProfile.id,
-            accepted_at: new Date().toISOString(),
-          }
-          await service.from('group_invites').update(acceptPayload).eq('id', invite.id)
-
-          return NextResponse.json({ invite, auto_added: true })
-        }
+        return NextResponse.json({ invite, auto_added: true })
       }
     }
 

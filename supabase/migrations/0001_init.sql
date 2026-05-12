@@ -1,4 +1,9 @@
--- SplitChain initial schema. Run in Supabase SQL editor.
+-- ============================================================
+-- SplitChain — consolidated initial schema
+-- Run this ENTIRE file in the Supabase SQL editor.
+-- Includes: tables, triggers, RLS policies, realtime,
+--          and the SIWE issued_at fix.
+-- ============================================================
 
 create extension if not exists "pgcrypto";
 
@@ -17,12 +22,20 @@ create table if not exists public.profiles (
 create index if not exists profiles_email_idx on public.profiles(email);
 create index if not exists profiles_wallet_idx on public.profiles(wallet_address);
 
--- Auto-create profile on signup
+-- Auto-create profile on signup (handles both email and wallet users)
 create or replace function public.handle_new_user()
 returns trigger language plpgsql security definer as $$
 begin
-  insert into public.profiles (id, email, display_name)
-  values (new.id, new.email, split_part(coalesce(new.email, ''), '@', 1))
+  insert into public.profiles (id, email, display_name, wallet_address)
+  values (
+    new.id,
+    new.email,
+    coalesce(
+      new.raw_user_meta_data->>'display_name',
+      split_part(coalesce(new.email, ''), '@', 1)
+    ),
+    new.raw_user_meta_data->>'wallet_address'
+  )
   on conflict (id) do nothing;
   return new;
 end $$;
@@ -33,11 +46,12 @@ create trigger on_auth_user_created
   for each row execute function public.handle_new_user();
 
 -- ============================================================
--- AUTH NONCES (SIWE)
+-- AUTH NONCES (SIWE) — includes issued_at for signature match
 -- ============================================================
 create table if not exists public.auth_nonces (
   wallet_address text primary key,
   nonce text not null,
+  issued_at text not null,
   created_at timestamptz not null default now(),
   expires_at timestamptz not null
 );
@@ -108,7 +122,7 @@ create table if not exists public.settlements (
 create index if not exists settlements_group_idx on public.settlements(group_id);
 
 -- ============================================================
--- TRIGGERS for updated_at
+-- updated_at TRIGGERS
 -- ============================================================
 create or replace function public.set_updated_at()
 returns trigger language plpgsql as $$
@@ -127,7 +141,7 @@ create trigger trg_expenses_updated before update on public.expenses
   for each row execute function public.set_updated_at();
 
 -- ============================================================
--- HELPER FUNCTION
+-- HELPER
 -- ============================================================
 create or replace function public.is_group_member(gid uuid)
 returns boolean language sql security definer stable as $$
@@ -144,7 +158,7 @@ alter table public.expenses enable row level security;
 alter table public.expense_splits enable row level security;
 alter table public.settlements enable row level security;
 
--- PROFILES policies
+-- PROFILES
 drop policy if exists "profiles_select" on public.profiles;
 create policy "profiles_select" on public.profiles for select to authenticated using (true);
 
@@ -152,7 +166,7 @@ drop policy if exists "profiles_update_self" on public.profiles;
 create policy "profiles_update_self" on public.profiles for update to authenticated
   using (id = auth.uid()) with check (id = auth.uid());
 
--- GROUPS policies
+-- GROUPS
 drop policy if exists "groups_select_members" on public.groups;
 create policy "groups_select_members" on public.groups for select to authenticated
   using (public.is_group_member(id));
@@ -165,7 +179,7 @@ drop policy if exists "groups_update_owner" on public.groups;
 create policy "groups_update_owner" on public.groups for update to authenticated
   using (exists(select 1 from public.group_members where group_id = id and user_id = auth.uid() and role = 'owner'));
 
--- GROUP_MEMBERS policies
+-- GROUP_MEMBERS
 drop policy if exists "members_select" on public.group_members;
 create policy "members_select" on public.group_members for select to authenticated
   using (public.is_group_member(group_id) or user_id = auth.uid());
@@ -184,7 +198,7 @@ create policy "members_delete" on public.group_members for delete to authenticat
     or exists(select 1 from public.group_members gm where gm.group_id = group_members.group_id and gm.user_id = auth.uid() and gm.role = 'owner')
   );
 
--- EXPENSES policies
+-- EXPENSES
 drop policy if exists "expenses_select" on public.expenses;
 create policy "expenses_select" on public.expenses for select to authenticated
   using (public.is_group_member(group_id));
@@ -194,7 +208,7 @@ create policy "expenses_modify" on public.expenses for all to authenticated
   using (public.is_group_member(group_id))
   with check (public.is_group_member(group_id));
 
--- EXPENSE_SPLITS policies
+-- EXPENSE_SPLITS
 drop policy if exists "splits_select" on public.expense_splits;
 create policy "splits_select" on public.expense_splits for select to authenticated
   using (exists(select 1 from public.expenses e where e.id = expense_id and public.is_group_member(e.group_id)));
@@ -204,7 +218,7 @@ create policy "splits_modify" on public.expense_splits for all to authenticated
   using (exists(select 1 from public.expenses e where e.id = expense_id and public.is_group_member(e.group_id)))
   with check (exists(select 1 from public.expenses e where e.id = expense_id and public.is_group_member(e.group_id)));
 
--- SETTLEMENTS policies
+-- SETTLEMENTS
 drop policy if exists "settlements_select" on public.settlements;
 create policy "settlements_select" on public.settlements for select to authenticated
   using (public.is_group_member(group_id));

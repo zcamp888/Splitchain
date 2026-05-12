@@ -1,9 +1,8 @@
-// @ts-nocheck
 // @integration: supabase
 import { NextResponse } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 
-export async function POST(req) {
+export async function POST(req: Request) {
   try {
     const supabase = createSupabaseServerClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -16,8 +15,9 @@ export async function POST(req) {
       .from('group_invites')
       .select('*')
       .eq('token', token)
-      .single()
-    if (error || !invite) return NextResponse.json({ error: 'Invite not found' }, { status: 404 })
+      .maybeSingle()
+    if (error) throw error
+    if (!invite) return NextResponse.json({ error: 'Invite not found' }, { status: 404 })
 
     if (new Date(invite.expires_at) < new Date()) {
       return NextResponse.json({ error: 'Invite expired' }, { status: 410 })
@@ -34,21 +34,18 @@ export async function POST(req) {
       .maybeSingle()
 
     if (!existing) {
-      const memberPayload = {
+      const { error: memberErr } = await supabase.from('group_members').insert({
         group_id: invite.group_id,
         user_id: user.id,
         role: 'member',
-        joined_at: new Date().toISOString(),
-      }
-      const { error: memberErr } = await supabase.from('group_members').insert(memberPayload)
+      })
       if (memberErr) throw memberErr
     }
 
-    const acceptPayload = {
+    await supabase.from('group_invites').update({
       accepted_by: user.id,
       accepted_at: new Date().toISOString(),
-    }
-    await supabase.from('group_invites').update(acceptPayload).eq('id', invite.id)
+    }).eq('id', invite.id)
 
     return NextResponse.json({ group_id: invite.group_id })
   } catch (e) {
