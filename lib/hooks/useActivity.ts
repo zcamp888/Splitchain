@@ -1,6 +1,7 @@
+```
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 
@@ -14,7 +15,6 @@ export type ActivityItem = {
   amount: number | null
   currency: string | null
   target_id: string | null
-  // Enriched client-side:
   group_name?: string
   group_emoji?: string
   actor_name?: string
@@ -24,11 +24,18 @@ export type ActivityItem = {
 
 export function useActivityFeed(limit = 30) {
   const qc = useQueryClient()
+  const channelRef = useRef<any>(null)
 
   useEffect(() => {
+    // Guard: only subscribe once per mount. React strict mode + fast refresh
+    // would otherwise try to add listeners to an already-subscribed channel,
+    // which Supabase realtime now strictly rejects.
+    if (channelRef.current) return
+
     const supabase = createSupabaseBrowserClient()
-    const channel = supabase
-      .channel('activity-feed')
+    const channel = supabase.channel(`activity-feed-${Math.random().toString(36).slice(2)}`)
+
+    channel
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'expenses' }, () =>
         qc.invalidateQueries({ queryKey: ['activity'] })
       )
@@ -39,7 +46,15 @@ export function useActivityFeed(limit = 30) {
         qc.invalidateQueries({ queryKey: ['activity'] })
       )
       .subscribe()
-    return () => { supabase.removeChannel(channel) }
+
+    channelRef.current = channel
+
+    return () => {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current)
+        channelRef.current = null
+      }
+    }
   }, [qc])
 
   return useQuery({
@@ -64,7 +79,6 @@ export function useActivityFeed(limit = 30) {
         .limit(limit)
       if (error) throw error
 
-      // Enrich with group + profile info
       const [{ data: groups }, { data: profiles }] = await Promise.all([
         supabase.from('groups').select('id, name, cover_emoji').in('id', groupIds),
         supabase.from('profiles').select('id, display_name, email, wallet_address')
@@ -130,7 +144,7 @@ export function useUnreadCounts() {
 
       const counts: Record<string, number> = {}
       ;(expenses || []).forEach((e: any) => {
-        if (e.paid_by === user.id) return // don't count your own actions
+        if (e.paid_by === user.id) return
         const lastSeen = seenMap.get(e.group_id)
         if (!lastSeen || new Date(e.created_at) > new Date(lastSeen)) {
           counts[e.group_id] = (counts[e.group_id] || 0) + 1
@@ -158,3 +172,4 @@ export function useMarkGroupSeen() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['unread-counts'] }),
   })
 }
+```
