@@ -1,14 +1,14 @@
-// @ts-nocheck
-/* eslint-disable */
+// @integration: supabase
+// @integration: gemini
 import { NextResponse } from 'next/server'
 import { createSupabaseServerClient, createSupabaseServiceClient } from '@/lib/supabase/server'
-import OpenAI from 'openai'
+import { GoogleGenerativeAI } from '@google/generative-ai'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
 
-const SYSTEM_PROMPT = `You are a receipt OCR engine. Extract structured data from receipt images.
-Return ONLY valid JSON with this exact shape:
+const SYSTEM_PROMPT = `You are a receipt OCR engine. Extract structured data from this receipt image.
+Return ONLY valid JSON (no markdown, no code fences) with this exact shape:
 {
   "merchant": string | null,
   "date": string | null,
@@ -19,19 +19,69 @@ Return ONLY valid JSON with this exact shape:
   "total": number,
   "items": [{ "name": string, "qty": number, "price": number }]
 }
+Rules:
 - Use ISO date format (YYYY-MM-DD) when possible.
-- Currency as 3-letter ISO (USD, EUR, GBP, etc.) or null if unclear.
-- All amounts as positive numbers in major units (e.g., 12.50 not 1250).
-- If image is not a receipt or unreadable, return: {"error": "not a receipt"}.`
+- Currency as 3-letter ISO code (USD, EUR, GBP, etc.) or null if unclear.
+- All amounts as positive numbers in major units (12.50 not 1250).
+- If image is not a receipt or unreadable, return exactly: {"error": "not a receipt"}.
+- Output raw JSON only — no code fences, no commentary.`
 
-export async function POST(req: any) {
+const MODEL_CANDIDATES = [
+  'gemini-2.0-flash',
+  'gemini-2.0-flash-001',
+  'gemini-flash-latest',
+  'gemini-1.5-flash-latest',
+]
+
+function stripCodeFences(s: string): string {
+  let trimmed = s.trim()
+  if (trimmed.startsWith('```')) {
+    trimmed = trimmed.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '')
+  }
+  return trimmed.trim()
+}
+
+async function runGemini(apiKey: string, mimeType: string, base64: string) {
+  const genAI = new GoogleGenerativeAI(apiKey)
+  let lastError: Error | null = null
+
+  for (const modelName of MODEL_CANDIDATES) {
+    try {
+      const model = genAI.getGenerativeModel({
+        model: modelName,
+        generationConfig: {
+          temperature: 0.1,
+          maxOutputTokens: 2048,
+          responseMimeType: 'application/json',
+        },
+      })
+
+      const result = await model.generateContent([
+        { text: SYSTEM_PROMPT },
+        { inlineData: { mimeType, data: base64 } },
+      ])
+
+      return { text: result.response.text(), modelUsed: modelName }
+    } catch (e) {
+      lastError = e instanceof Error ? e : new Error(String(e))
+      // Only fall through on 404 (model retired); other errors abort
+      if (!lastError.message.includes('404') && !lastError.message.includes('not found')) {
+        throw lastError
+      }
+    }
+  }
+
+  throw lastError || new Error('All Gemini models failed')
+}
+
+export async function POST(req: Request) {
   try {
-    const supabase: any = createSupabaseServerClient()
+    const supabase = createSupabaseServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const form = await req.formData()
-    const file: any = form.get('file')
+    const file = form.get('file') as File | null
     if (!file) return NextResponse.json({ error: 'file required' }, { status: 400 })
 
     if (!file.type.startsWith('image/')) {
@@ -45,7 +95,7 @@ export async function POST(req: any) {
     const path = `${user.id}/${crypto.randomUUID()}.${ext}`
     const buffer = Buffer.from(await file.arrayBuffer())
 
-    const service: any = createSupabaseServiceClient()
+    const service = createSupabaseServiceClient()
     const { error: uploadErr } = await service.storage
       .from('receipts')
       .upload(path, buffer, { contentType: file.type, upsert: false })
@@ -63,45 +113,34 @@ export async function POST(req: any) {
     if (insertErr) throw insertErr
 
     let parsed: any = null
-    let ocrStatus = 'failed'
-    let errorMessage: any = null
+    let ocrStatus: 'success' | 'failed' = 'failed'
+    let errorMessage: string | null = null
 
     try {
-      if (!process.env.OPENAI_API_KEY) throw new Error('OpenAI not configured')
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+      if (!process.env.GEMINI_API_KEY) {
+        throw new Error('GEMINI_API_KEY not configured — add it in Vercel env vars')
+      }
 
-      const dataUrl = `data:${file.type};base64,${buffer.toString('base64')}`
+      const { text } = await runGemini(
+        process.env.GEMINI_API_KEY,
+        file.type,
+        buffer.toString('base64')
+      )
 
-      const completion = await openai.chat.completions.create({
-        model: 'gpt-4o',
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: 'Extract data from this receipt as JSON.' },
-              { type: 'image_url', image_url: { url: dataUrl, detail: 'high' } },
-            ],
-          },
-        ],
-        response_format: { type: 'json_object' },
-        max_tokens: 1500,
-      })
-
-      const content = completion.choices[0]?.message?.content || '{}'
-      parsed = JSON.parse(content)
+      const clean = stripCodeFences(text)
+      parsed = JSON.parse(clean)
 
       if (parsed.error) {
         ocrStatus = 'failed'
         errorMessage = parsed.error
       } else if (typeof parsed.total !== 'number') {
         ocrStatus = 'failed'
-        errorMessage = 'Could not extract total'
+        errorMessage = 'Could not extract total from receipt'
       } else {
         ocrStatus = 'success'
       }
-    } catch (e: any) {
-      errorMessage = e instanceof Error ? e.message : 'OCR failed'
+    } catch (e) {
+      errorMessage = e instanceof Error ? e.message : 'Gemini OCR failed'
       ocrStatus = 'failed'
     }
 
@@ -117,8 +156,7 @@ export async function POST(req: any) {
       .single()
 
     return NextResponse.json({ receipt: updated })
-  } catch (e: any) {
-    const msg = e instanceof Error ? e.message : 'Upload failed'
-    return NextResponse.json({ error: msg }, { status: 500 })
+  } catch (e) {
+    return NextResponse.json({ error: e instanceof Error ? e.message : 'Upload failed' }, { status: 500 })
   }
 }
