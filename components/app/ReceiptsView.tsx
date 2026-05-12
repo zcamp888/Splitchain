@@ -9,11 +9,11 @@ import { formatCurrency } from '@/lib/balances'
 function friendlyError(raw: string | null | undefined): { kind: 'quota' | 'config' | 'parse' | 'other'; message: string } {
   if (!raw) return { kind: 'other', message: 'Could not parse this receipt.' }
   const lower = raw.toLowerCase()
-  if (lower.includes('quota') || lower.includes('429') || lower.includes('billing')) {
-    return { kind: 'quota', message: 'OpenAI quota exceeded. Add credits at platform.openai.com/billing.' }
+  if (lower.includes('quota') || lower.includes('429') || lower.includes('rate limit') || lower.includes('resource_exhausted')) {
+    return { kind: 'quota', message: 'Gemini rate limit hit. Wait a minute and retry — free tier is 15 requests/min.' }
   }
-  if (lower.includes('not configured') || lower.includes('api_key') || lower.includes('api key')) {
-    return { kind: 'config', message: 'OpenAI API key not configured.' }
+  if (lower.includes('not configured') || lower.includes('api_key') || lower.includes('api key') || lower.includes('gemini_api_key')) {
+    return { kind: 'config', message: 'Gemini API key not configured. Get one free at aistudio.google.com.' }
   }
   if (lower.includes('not a receipt') || lower.includes('could not extract')) {
     return { kind: 'parse', message: 'Image doesn\u2019t look like a receipt, or text is unreadable.' }
@@ -37,7 +37,7 @@ export function ReceiptsView() {
       try {
         const r = await upload.mutateAsync(file)
         if (r.ocr_status === 'success') {
-          push({ kind: 'success', message: 'Receipt scanned with AI' })
+          push({ kind: 'success', message: 'Receipt scanned with Gemini ✨' })
         } else {
           const f = friendlyError(r.error_message)
           push({ kind: f.kind === 'quota' || f.kind === 'config' ? 'error' : 'info', message: f.message })
@@ -74,7 +74,7 @@ export function ReceiptsView() {
     <div>
       <header className="mb-8">
         <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">Receipts</h1>
-        <p className="mt-1 text-sm text-fg-muted">Upload an image &mdash; GPT&#8209;4o reads it for you.</p>
+        <p className="mt-1 text-sm text-fg-muted">Upload an image &mdash; Gemini reads it for you.</p>
       </header>
 
       <div
@@ -156,7 +156,7 @@ export function ReceiptsView() {
                       ) : err.kind === 'quota' ? (
                         <span className="inline-flex items-center gap-1 rounded-full border border-neon-violet/30 bg-neon-violet/10 px-2 py-0.5 text-neon-violet">
                           <CreditCard className="h-3 w-3" aria-hidden="true" />
-                          Billing
+                          Rate limit
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 rounded-full border border-danger/30 bg-danger/10 px-2 py-0.5 text-danger">
