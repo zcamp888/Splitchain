@@ -3,8 +3,8 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { Plus, Users, Loader2 } from 'lucide-react'
-import { useGroups } from '@/lib/hooks/useGroups'
-import { CreateGroupDialog } from '@/components/app/CreateGroupDialog'
+import { useGroups } from '@/lib/hooks'
+import { CreateGroupDialog } from '@/components/CreateGroupDialog'
 
 export function GroupsDashboard() {
   const [showCreate, setShowCreate] = useState(false)
@@ -15,7 +15,7 @@ export function GroupsDashboard() {
       <header className="mb-8 flex items-end justify-between gap-4">
         <div>
           <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">Your groups</h1>
-          <p className="mt-1 text-sm text-fg-muted">Track shared expenses and settle on-chain.</p>
+          <p className="mt-1 text-sm text-fg-muted">Track shared expenses with friends.</p>
         </div>
         <button onClick={() => setShowCreate(true)} className="btn-primary">
           <Plus className="h-4 w-4" aria-hidden="true" />
@@ -34,7 +34,9 @@ export function GroupsDashboard() {
             <Users className="h-6 w-6" aria-hidden="true" />
           </div>
           <h2 className="font-display text-xl font-semibold">No groups yet</h2>
-          <p className="mx-auto mt-2 max-w-sm text-sm text-fg-muted">Create your first group to start splitting expenses with friends.</p>
+          <p className="mx-auto mt-2 max-w-sm text-sm text-fg-muted">
+            Create your first group to start splitting expenses.
+          </p>
           <button onClick={() => setShowCreate(true)} className="btn-primary mt-6">
             <Plus className="h-4 w-4" aria-hidden="true" />
             Create group
@@ -53,7 +55,9 @@ export function GroupsDashboard() {
                 <span className="rounded-full border border-border-strong bg-bg-elev/60 px-2 py-0.5 text-xs text-fg-muted">{g.role}</span>
               </div>
               <h3 className="mt-3 font-display text-lg font-semibold text-balance line-clamp-1">{g.name}</h3>
-              {g.description && <p className="mt-1 text-sm text-fg-muted line-clamp-2 break-words">{g.description}</p>}
+              {g.description && (
+                <p className="mt-1 text-sm text-fg-muted line-clamp-2 break-words">{g.description}</p>
+              )}
               <div className="mt-4 flex items-center justify-between text-xs text-fg-dim">
                 <span>{g.currency}</span>
                 <span className="text-neon-cyan transition-transform group-hover:translate-x-0.5">Open →</span>
