@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { ArrowLeft, UserPlus, Loader2, Receipt as ReceiptIcon, Wallet, TrendingUp, CheckCircle2, Zap, Settings, ExternalLink } from 'lucide-react'
 import { useGroupDetail, useGroupExpenses, useGroupSettlements, useCreateSettlement } from '@/lib/hooks'
+import { useMarkGroupSeen } from '@/lib/hooks/useActivity'
 import { computeBalances, suggestTransfers, formatCurrency } from '@/lib/balances'
 import { InviteDialog } from '@/components/app/InviteDialog'
 import { ExpenseList } from '@/components/ExpenseList'
@@ -18,6 +19,7 @@ export function GroupDetail({ groupId }: { groupId: string }) {
   const { data: group, isLoading } = useGroupDetail(groupId)
   const { data: expenses } = useGroupExpenses(groupId)
   const { data: settlements } = useGroupSettlements(groupId)
+  const markSeen = useMarkGroupSeen()
   const [showInvite, setShowInvite] = useState(false)
   const [showAdd, setShowAdd] = useState(false)
   const [editExpense, setEditExpense] = useState<any | null>(null)
@@ -32,6 +34,12 @@ export function GroupDetail({ groupId }: { groupId: string }) {
     const supabase = createSupabaseBrowserClient()
     supabase.auth.getUser().then(({ data: { user } }) => setCurrentUserId(user?.id || null))
   }, [])
+
+  // Mark this group as seen whenever the user lands on it
+  useEffect(() => {
+    if (groupId) markSeen.mutate(groupId)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groupId])
 
   const memberMap = useMemo(() => {
     const m = new Map<string, any>()

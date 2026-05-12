@@ -2,10 +2,13 @@
 
 import Link from 'next/link'
 import { useState } from 'react'
-import { Plus, Users, Loader2, TrendingUp, TrendingDown, AlertCircle, Calendar, Receipt as ReceiptIcon, ArrowUpRight, Sparkles } from 'lucide-react'
+import { Plus, Users, Loader2, TrendingUp, TrendingDown, AlertCircle, Calendar, ArrowUpRight, Sparkles, Activity as ActivityIcon } from 'lucide-react'
 import { useGroups } from '@/lib/hooks'
 import { useDashboard } from '@/lib/hooks/useDashboard'
+import { useUnreadCounts } from '@/lib/hooks/useActivity'
 import { CreateGroupDialog } from '@/components/CreateGroupDialog'
+import { SpendingInsights } from '@/components/app/SpendingInsights'
+import { ActivityFeed } from '@/components/app/ActivityFeed'
 import { formatCurrency } from '@/lib/balances'
 
 function formatTotals(totals: Record<string, number>) {
@@ -18,6 +21,7 @@ export function PersonalDashboard() {
   const [showCreate, setShowCreate] = useState(false)
   const { data: groups, isLoading: groupsLoading } = useGroups()
   const { data: dash, isLoading: dashLoading } = useDashboard()
+  const { data: unread } = useUnreadCounts()
 
   const isLoading = groupsLoading || dashLoading
   const hasGroups = groups && groups.length > 0
@@ -60,7 +64,6 @@ export function PersonalDashboard() {
         </div>
       ) : (
         <>
-          {/* Hero: net position */}
           {dash && (owedToYou || youOwe) && (
             <section className="mb-8 grid gap-4 sm:grid-cols-2">
               <div className={`glass-strong rounded-3xl p-6 transition-all ${netPositive ? 'border-success/30' : 'border-border/60'}`}>
@@ -90,7 +93,6 @@ export function PersonalDashboard() {
             </section>
           )}
 
-          {/* Overdue bills alert */}
           {dash && dash.overdueBills.length > 0 && (
             <section className="mb-6 rounded-2xl border border-danger/30 bg-danger/5 p-5">
               <div className="flex items-start gap-3">
@@ -118,91 +120,82 @@ export function PersonalDashboard() {
           )}
 
           <div className="grid gap-6 lg:grid-cols-3">
-            {/* Groups column (2/3) */}
-            <div className="lg:col-span-2">
-              <div className="mb-3 flex items-center justify-between">
-                <h2 className="flex items-center gap-2 font-display text-lg font-semibold">
-                  <Users className="h-4 w-4 text-neon-violet" aria-hidden="true" />
-                  Your groups
-                </h2>
-                {hasGroups && (
-                  <span className="text-xs text-fg-dim">{groups!.length} total</span>
-                )}
-              </div>
-
-              {!hasGroups ? (
-                <div className="glass rounded-2xl p-8 text-center text-sm text-fg-muted">
-                  No groups yet. Create one to start splitting.
-                </div>
-              ) : (
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {groups!.map((g: any) => {
-                    const balance = dash?.groupBalances.find((b) => b.group_id === g.id)
-                    const net = balance?.net || 0
-                    const positive = net > 0.01
-                    const negative = net < -0.01
-                    return (
-                      <Link
-                        key={g.id}
-                        href={`/app/groups/${g.id}`}
-                        className="glass group rounded-2xl p-4 transition-all duration-300 hover:border-neon-violet/40 hover:-translate-y-0.5"
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="text-3xl" aria-hidden="true">{g.cover_emoji}</div>
-                          {positive && (
-                            <span className="rounded-full bg-success/10 px-2 py-0.5 text-[10px] font-medium text-success">+{formatCurrency(net, g.currency)}</span>
-                          )}
-                          {negative && (
-                            <span className="rounded-full bg-danger/10 px-2 py-0.5 text-[10px] font-medium text-danger">{formatCurrency(net, g.currency)}</span>
-                          )}
-                          {!positive && !negative && (
-                            <span className="rounded-full border border-border/60 bg-bg-elev/60 px-2 py-0.5 text-[10px] text-fg-dim">settled</span>
-                          )}
-                        </div>
-                        <h3 className="mt-3 font-display font-semibold text-balance line-clamp-1">{g.name}</h3>
-                        <div className="mt-1 flex items-center justify-between text-xs text-fg-dim">
-                          <span>{balance?.member_count || 0} member{(balance?.member_count || 0) === 1 ? '' : 's'}</span>
-                          <span className="text-neon-cyan opacity-0 transition-opacity group-hover:opacity-100">Open →</span>
-                        </div>
-                      </Link>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* Side column (1/3): activity + bills */}
-            <div className="space-y-6">
-              {dash && dash.recentActivity.length > 0 && (
-                <section>
-                  <h2 className="mb-3 flex items-center gap-2 font-display text-lg font-semibold">
-                    <ReceiptIcon className="h-4 w-4 text-neon-cyan" aria-hidden="true" />
-                    Recent activity
+            <div className="space-y-6 lg:col-span-2">
+              <section>
+                <div className="mb-3 flex items-center justify-between">
+                  <h2 className="flex items-center gap-2 font-display text-lg font-semibold">
+                    <Users className="h-4 w-4 text-neon-violet" aria-hidden="true" />
+                    Your groups
                   </h2>
-                  <ul className="glass divide-y divide-border/60 overflow-hidden rounded-2xl">
-                    {dash.recentActivity.map((a: any) => (
-                      <li key={a.id}>
+                  {hasGroups && <span className="text-xs text-fg-dim">{groups!.length} total</span>}
+                </div>
+
+                {!hasGroups ? (
+                  <div className="glass rounded-2xl p-8 text-center text-sm text-fg-muted">
+                    No groups yet. Create one to start splitting.
+                  </div>
+                ) : (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {groups!.map((g: any) => {
+                      const balance = dash?.groupBalances.find((b) => b.group_id === g.id)
+                      const net = balance?.net || 0
+                      const positive = net > 0.01
+                      const negative = net < -0.01
+                      const unreadCount = unread?.[g.id] || 0
+                      return (
                         <Link
-                          href={`/app/groups/${a.group_id}`}
-                          className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-bg-elev/30"
+                          key={g.id}
+                          href={`/app/groups/${g.id}`}
+                          className="glass group relative rounded-2xl p-4 transition-all duration-300 hover:border-neon-violet/40 hover:-translate-y-0.5"
                         >
-                          <span className="text-xl shrink-0" aria-hidden="true">{a.group_emoji}</span>
-                          <div className="min-w-0 flex-1">
-                            <div className="truncate text-sm font-medium">{a.description}</div>
-                            <div className="text-xs text-fg-dim">
-                              {a.paid_by_me ? 'You paid' : `Your share`} ·{' '}
-                              {new Date(a.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                            </div>
+                          {unreadCount > 0 && (
+                            <span
+                              className="absolute right-3 top-3 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-neon-violet px-1.5 text-[10px] font-semibold text-bg shadow-lg shadow-neon-violet/40"
+                              aria-label={`${unreadCount} new`}
+                            >
+                              {unreadCount > 9 ? '9+' : unreadCount}
+                            </span>
+                          )}
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="text-3xl" aria-hidden="true">{g.cover_emoji}</div>
+                            {positive && !unreadCount && (
+                              <span className="rounded-full bg-success/10 px-2 py-0.5 text-[10px] font-medium text-success">+{formatCurrency(net, g.currency)}</span>
+                            )}
+                            {negative && !unreadCount && (
+                              <span className="rounded-full bg-danger/10 px-2 py-0.5 text-[10px] font-medium text-danger">{formatCurrency(net, g.currency)}</span>
+                            )}
+                            {!positive && !negative && !unreadCount && (
+                              <span className="rounded-full border border-border/60 bg-bg-elev/60 px-2 py-0.5 text-[10px] text-fg-dim">settled</span>
+                            )}
                           </div>
-                          <div className={`shrink-0 tabular font-mono text-sm ${a.paid_by_me ? 'text-success' : 'text-fg-muted'}`}>
-                            {a.paid_by_me ? formatCurrency(a.amount, a.currency) : formatCurrency(a.my_share, a.currency)}
+                          <h3 className="mt-3 font-display font-semibold text-balance line-clamp-1">{g.name}</h3>
+                          <div className="mt-1 flex items-center justify-between text-xs text-fg-dim">
+                            <span>{balance?.member_count || 0} member{(balance?.member_count || 0) === 1 ? '' : 's'}</span>
+                            <span className="text-neon-cyan opacity-0 transition-opacity group-hover:opacity-100">Open →</span>
                           </div>
                         </Link>
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-              )}
+                      )
+                    })}
+                  </div>
+                )}
+              </section>
+
+              <SpendingInsights />
+            </div>
+
+            <div className="space-y-6">
+              <section>
+                <div className="mb-3 flex items-center justify-between">
+                  <h2 className="flex items-center gap-2 font-display text-lg font-semibold">
+                    <ActivityIcon className="h-4 w-4 text-neon-cyan" aria-hidden="true" />
+                    Recent activity
+                  </h2>
+                  <Link href="/app/activity" className="text-xs text-fg-muted hover:text-fg">
+                    All →
+                  </Link>
+                </div>
+                <ActivityFeed limit={8} />
+              </section>
 
               {dash && dash.upcomingBills.length > 0 && (
                 <section>
