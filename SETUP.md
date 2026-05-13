@@ -14,7 +14,11 @@
    - `supabase/migrations/0004_fix_rls.sql`
    - `supabase/migrations/0005_profiles_insert.sql`
    - `supabase/migrations/0006_fix_groups_select.sql`
-4. **Database → Replication** — confirm `expenses`, `expense_splits`, `settlements`, `group_members` are enabled on `supabase_realtime`.
+   - `supabase/migrations/0007_activity.sql`
+   - `supabase/migrations/0008_recurring.sql`
+   - `supabase/migrations/0009_push.sql`
+   - `supabase/migrations/0010_vaults.sql`
+4. **Database → Replication** — confirm `expenses`, `expense_splits`, `settlements`, `group_members`, `vaults`, `vault_deposits`, `vault_claims`, `vault_refunds` are enabled on `supabase_realtime`.
 5. **Storage** — confirm a private bucket named `receipts` exists (created by `0002_wave3.sql`).
 
 ## 2. Wallet auth secret
@@ -31,7 +35,7 @@ openssl rand -hex 32
 
 ## 4. Alchemy
 
-[alchemy.com](https://alchemy.com) → enable Base, Polygon, Mainnet, Optimism → `NEXT_PUBLIC_ALCHEMY_KEY`.
+[alchemy.com](https://alchemy.com) → enable Base, Base Sepolia, Polygon, Mainnet, Optimism → `NEXT_PUBLIC_ALCHEMY_KEY`.
 
 Used for ENS resolution and on-chain reads.
 
@@ -42,16 +46,38 @@ Used for ENS resolution and on-chain reads.
 3. Copy the key → `GEMINI_API_KEY`
 
 **Free tier:** 15 requests/minute, 1500/day. Uses `gemini-1.5-flash` with vision.
-No billing setup needed for personal use.
 
-## 6. Run
+## 6. Group Vaults — deploy contracts (optional, for Web3 escrow features)
+
+See `contracts/DEPLOY.md` for full instructions.
+
+Quick version:
+
+```bash
+cd contracts
+forge install foundry-rs/forge-std --no-commit
+forge install OpenZeppelin/openzeppelin-contracts --no-commit
+forge test  # all 23 tests should pass
+cp .env.example .env  # fill in DEPLOYER_PRIVATE_KEY
+source .env
+forge script script/Deploy.s.sol --rpc-url base_sepolia --broadcast --verify
+```
+
+Copy the deployed factory address into `.env.local`:
+
+```
+NEXT_PUBLIC_VAULT_FACTORY_BASE_SEPOLIA=0x...
+NEXT_PUBLIC_VAULT_FACTORY_BASE=0x...     # after mainnet deploy
+```
+
+## 7. Run
 
 ```bash
 npm install
 npm run dev
 ```
 
-## 7. Deploy to Vercel
+## 8. Deploy to Vercel
 
 1. Push to GitHub.
 2. Import on [vercel.com](https://vercel.com).
@@ -66,7 +92,11 @@ npm run dev
 - ✅ Expenses with equal/exact splits
 - ✅ Balance engine + minimum-transfer settlement suggestions
 - ✅ Shareable invite links + ENS / wallet / email direct invites
-- ✅ Gemini 1.5 Flash receipt OCR (merchant, date, items, total) — FREE tier
+- ✅ Gemini receipt OCR (free tier)
 - ✅ Personal bills tracker (recurring, due dates, paid toggle)
 - ✅ On-chain settlements (ETH/USDC on Base, Polygon, Optimism, Mainnet)
 - ✅ Group settings, expense edit, member removal
+- ✅ Recurring expenses
+- ✅ Activity feed + push notifications
+- ✅ CSV export
+- 🚧 **On-chain group vaults** (contracts deployed, frontend coming Phase 3)

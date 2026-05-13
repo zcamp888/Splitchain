@@ -167,4 +167,3 @@ export function useMarkGroupSeen() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['unread-counts'] }),
   })
 }
-  

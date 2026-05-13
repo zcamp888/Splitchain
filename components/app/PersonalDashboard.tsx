@@ -1,14 +1,17 @@
 'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
-import { Plus, Users, Loader2, TrendingUp, TrendingDown, AlertCircle, Calendar, ArrowUpRight, Sparkles, Activity as ActivityIcon } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Plus, Users, Loader2, TrendingUp, TrendingDown, AlertCircle, Calendar, ArrowUpRight, Sparkles, Activity as ActivityIcon, Download } from 'lucide-react'
 import { useGroups } from '@/lib/hooks'
 import { useDashboard } from '@/lib/hooks/useDashboard'
 import { useUnreadCounts } from '@/lib/hooks/useActivity'
+import { useAutoRunRecurring } from '@/lib/hooks/useRecurring'
+import { useExportPersonalCSV } from '@/lib/hooks/useExport'
 import { CreateGroupDialog } from '@/components/CreateGroupDialog'
 import { SpendingInsights } from '@/components/app/SpendingInsights'
 import { ActivityFeed } from '@/components/app/ActivityFeed'
+import { useToast } from '@/components/Toaster'
 import { formatCurrency } from '@/lib/balances'
 
 function formatTotals(totals: Record<string, number>) {
@@ -22,6 +25,36 @@ export function PersonalDashboard() {
   const { data: groups, isLoading: groupsLoading } = useGroups()
   const { data: dash, isLoading: dashLoading } = useDashboard()
   const { data: unread } = useUnreadCounts()
+  const autoRun = useAutoRunRecurring()
+  const exportPersonal = useExportPersonalCSV()
+  const { push } = useToast()
+
+  // Auto-materialize any due recurring expenses on dashboard load.
+  // Throttled to once per 6 hours via localStorage.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const last = localStorage.getItem('sc:recurring:last')
+    const now = Date.now()
+    if (last && now - parseInt(last, 10) < 6 * 60 * 60 * 1000) return
+    autoRun.mutateAsync().then((count) => {
+      localStorage.setItem('sc:recurring:last', String(now))
+      if (count && count > 0) {
+        push({ kind: 'success', message: `${count} recurring expense${count === 1 ? '' : 's'} added` })
+      }
+    }).catch(() => {
+      // Silent — don't bother user if RPC fails
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const handleExport = async () => {
+    try {
+      await exportPersonal.mutateAsync()
+      push({ kind: 'success', message: 'CSV downloaded' })
+    } catch (e) {
+      push({ kind: 'error', message: e instanceof Error ? e.message : 'Failed' })
+    }
+  }
 
   const isLoading = groupsLoading || dashLoading
   const hasGroups = groups && groups.length > 0
@@ -37,10 +70,27 @@ export function PersonalDashboard() {
           <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">Dashboard</h1>
           <p className="mt-1 text-sm text-fg-muted">Where you stand across all your groups.</p>
         </div>
-        <button onClick={() => setShowCreate(true)} className="btn-primary">
-          <Plus className="h-4 w-4" aria-hidden="true" />
-          New group
-        </button>
+        <div className="flex flex-wrap gap-2">
+          {hasGroups && (
+            <button
+              onClick={handleExport}
+              disabled={exportPersonal.isPending}
+              className="btn-ghost"
+              aria-label="Export all your activity to CSV"
+            >
+              {exportPersonal.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              ) : (
+                <Download className="h-4 w-4" aria-hidden="true" />
+              )}
+              Export
+            </button>
+          )}
+          <button onClick={() => setShowCreate(true)} className="btn-primary">
+            <Plus className="h-4 w-4" aria-hidden="true" />
+            New group
+          </button>
+        </div>
       </header>
 
       {isLoading ? (

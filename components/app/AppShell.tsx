@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import type { User } from '@supabase/supabase-js'
-import { Home, Receipt, CreditCard, LogOut, Wallet, Activity } from 'lucide-react'
+import { Home, Receipt, CreditCard, LogOut, Wallet, Activity, Settings as SettingsIcon } from 'lucide-react'
 import { useDisconnect } from 'wagmi'
 import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 import { NotificationBell } from '@/components/app/NotificationBell'
@@ -13,6 +13,7 @@ const navItems = [
   { href: '/app/activity', label: 'Activity', icon: Activity },
   { href: '/app/bills', label: 'My bills', icon: CreditCard },
   { href: '/app/receipts', label: 'Receipts', icon: Receipt },
+  { href: '/app/settings', label: 'Settings', icon: SettingsIcon },
 ]
 
 export function AppShell({ user, children }: { user: User; children: React.ReactNode }) {
