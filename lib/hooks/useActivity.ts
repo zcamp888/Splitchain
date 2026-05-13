@@ -1,4 +1,3 @@
-```
 'use client'
 
 import { useEffect, useRef } from 'react'
@@ -27,15 +26,11 @@ export function useActivityFeed(limit = 30) {
   const channelRef = useRef<any>(null)
 
   useEffect(() => {
-    // Guard: only subscribe once per mount. React strict mode + fast refresh
-    // would otherwise try to add listeners to an already-subscribed channel,
-    // which Supabase realtime now strictly rejects.
     if (channelRef.current) return
 
     const supabase = createSupabaseBrowserClient()
-    const channel = supabase.channel(`activity-feed-${Math.random().toString(36).slice(2)}`)
-
-    channel
+    const channel = supabase
+      .channel(`activity-feed-${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'expenses' }, () =>
         qc.invalidateQueries({ queryKey: ['activity'] })
       )
@@ -172,4 +167,4 @@ export function useMarkGroupSeen() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['unread-counts'] }),
   })
 }
-```
+  
