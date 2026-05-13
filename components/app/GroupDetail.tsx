@@ -5,12 +5,17 @@ import { useEffect, useMemo, useState } from 'react'
 import { ArrowLeft, UserPlus, Loader2, Receipt as ReceiptIcon, Wallet, TrendingUp, CheckCircle2, Zap, Settings, ExternalLink } from 'lucide-react'
 import { useGroupDetail, useGroupExpenses, useGroupSettlements, useCreateSettlement } from '@/lib/hooks'
 import { useMarkGroupSeen } from '@/lib/hooks/useActivity'
+import { useGroupVaults } from '@/lib/hooks/useVaults'
 import { computeBalances, suggestTransfers, formatCurrency } from '@/lib/balances'
 import { InviteDialog } from '@/components/app/InviteDialog'
 import { ExpenseList } from '@/components/ExpenseList'
 import { AddExpenseDialog } from '@/components/AddExpenseDialog'
 import { SettleOnChainDialog } from '@/components/app/SettleOnChainDialog'
 import { GroupSettingsDialog } from '@/components/app/GroupSettingsDialog'
+import { RecurringList } from '@/components/app/RecurringList'
+import { ExportMenu } from '@/components/app/ExportMenu'
+import { VaultSection } from '@/components/app/VaultSection'
+import { VaultClaimDialog } from '@/components/app/VaultClaimDialog'
 import { useToast } from '@/components/Toaster'
 import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 import { getExplorerTxUrl } from '@/lib/chains'
@@ -19,23 +24,28 @@ export function GroupDetail({ groupId }: { groupId: string }) {
   const { data: group, isLoading } = useGroupDetail(groupId)
   const { data: expenses } = useGroupExpenses(groupId)
   const { data: settlements } = useGroupSettlements(groupId)
+  const { data: vaults } = useGroupVaults(groupId)
   const markSeen = useMarkGroupSeen()
   const [showInvite, setShowInvite] = useState(false)
   const [showAdd, setShowAdd] = useState(false)
   const [editExpense, setEditExpense] = useState<any | null>(null)
   const [showSettings, setShowSettings] = useState(false)
   const [onChainTx, setOnChainTx] = useState<{ from: string; to: string; amount: number; toProfile: any } | null>(null)
+  const [claimExpense, setClaimExpense] = useState<any | null>(null)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
 
   const settle = useCreateSettlement(groupId)
   const { push } = useToast()
+
+  const activeVault = useMemo(() => {
+    return vaults?.find((v) => v.status === 'active') || null
+  }, [vaults])
 
   useEffect(() => {
     const supabase = createSupabaseBrowserClient()
     supabase.auth.getUser().then(({ data: { user } }) => setCurrentUserId(user?.id || null))
   }, [])
 
-  // Mark this group as seen whenever the user lands on it
   useEffect(() => {
     if (groupId) markSeen.mutate(groupId)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -70,6 +80,17 @@ export function GroupDetail({ groupId }: { groupId: string }) {
       push({ kind: 'success', message: 'Marked as settled' })
     } catch (e) {
       push({ kind: 'error', message: e instanceof Error ? e.message : 'Failed' })
+    }
+  }
+
+  const handleExpenseCreated = (expense: { id: string; description: string; amount: number; currency: string; paid_by: string }) => {
+    // Auto-prompt vault claim only if there's an active vault, the current user paid,
+    // and the expense is in USDC-convertible terms (we let the user decide the amount).
+    if (activeVault && currentUserId && expense.paid_by === currentUserId) {
+      // Small delay so the close animation finishes first
+      setTimeout(() => {
+        setClaimExpense(expense)
+      }, 300)
     }
   }
 
@@ -111,14 +132,15 @@ export function GroupDetail({ groupId }: { groupId: string }) {
               {group.description && <p className="mt-1 text-sm text-fg-muted text-pretty">{group.description}</p>}
               <div className="mt-2 flex flex-wrap gap-3 text-xs text-fg-dim">
                 <span>{group.members.length} member{group.members.length === 1 ? '' : 's'}</span>
-                <span>•</span>
+                <span>·</span>
                 <span>{group.currency}</span>
-                <span>•</span>
+                <span>·</span>
                 <span className="tabular">{formatCurrency(totalSpent, group.currency)} total</span>
               </div>
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
+            <ExportMenu groupId={groupId} groupName={group.name} />
             <button onClick={() => setShowSettings(true)} className="btn-ghost" aria-label="Group settings">
               <Settings className="h-4 w-4" aria-hidden="true" />
             </button>
@@ -152,6 +174,10 @@ export function GroupDetail({ groupId }: { groupId: string }) {
           })}
         </div>
       </header>
+
+      <div className="mt-6">
+        <VaultSection groupId={groupId} groupName={group.name} members={group.members} />
+      </div>
 
       {transfers.length > 0 && (
         <section className="mt-6 glass rounded-2xl p-6">
@@ -248,6 +274,10 @@ export function GroupDetail({ groupId }: { groupId: string }) {
         </section>
       )}
 
+      <div className="mt-6">
+        <RecurringList groupId={groupId} members={group.members} currency={group.currency} />
+      </div>
+
       <section className="mt-6">
         <h2 className="mb-4 flex items-center gap-2 font-display text-lg font-semibold">
           <TrendingUp className="h-4 w-4 text-neon-violet" aria-hidden="true" />
@@ -260,6 +290,14 @@ export function GroupDetail({ groupId }: { groupId: string }) {
           currency={group.currency}
           onAdd={() => { setEditExpense(null); setShowAdd(true) }}
           onEdit={(exp) => { setEditExpense(exp); setShowAdd(true) }}
+          onClaim={(exp) => setClaimExpense({
+            id: exp.id,
+            description: exp.description,
+            amount: Number(exp.amount),
+            currency: exp.currency,
+          })}
+          currentUserId={currentUserId}
+          hasActiveVault={!!activeVault}
         />
       </section>
 
@@ -272,6 +310,7 @@ export function GroupDetail({ groupId }: { groupId: string }) {
         members={group.members}
         currency={group.currency}
         editId={editExpense?.id}
+        onCreated={editExpense ? undefined : handleExpenseCreated}
         prefill={editExpense ? {
           amount: Number(editExpense.amount),
           description: editExpense.description,
@@ -303,6 +342,14 @@ export function GroupDetail({ groupId }: { groupId: string }) {
           onClose={() => setShowSettings(false)}
           group={group}
           currentUserId={currentUserId}
+        />
+      )}
+      {claimExpense && activeVault && (
+        <VaultClaimDialog
+          open={!!claimExpense}
+          onClose={() => setClaimExpense(null)}
+          vault={activeVault}
+          expense={claimExpense}
         />
       )}
     </div>

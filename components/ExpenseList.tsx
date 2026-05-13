@@ -1,6 +1,6 @@
 'use client'
 
-import { Receipt, Trash2, Plus, Pencil } from 'lucide-react'
+import { Receipt, Trash2, Plus, Pencil, Zap } from 'lucide-react'
 import { formatCurrency } from '@/lib/balances'
 import { useDeleteExpense } from '@/lib/hooks'
 import { useToast } from '@/components/Toaster'
@@ -12,6 +12,9 @@ export function ExpenseList({
   currency,
   onAdd,
   onEdit,
+  onClaim,
+  currentUserId,
+  hasActiveVault,
 }: {
   groupId: string
   expenses: any[]
@@ -19,6 +22,9 @@ export function ExpenseList({
   currency: string
   onAdd: () => void
   onEdit: (expense: any) => void
+  onClaim?: (expense: any) => void
+  currentUserId?: string | null
+  hasActiveVault?: boolean
 }) {
   const del = useDeleteExpense(groupId)
   const { push } = useToast()
@@ -59,6 +65,9 @@ export function ExpenseList({
         const payerLabel =
           payer?.display_name || payer?.email || (wallet ? `${wallet.slice(0, 6)}…${wallet.slice(-4)}` : 'Unknown')
         const date = new Date(e.expense_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+        const iPaid = currentUserId && e.paid_by === currentUserId
+        const canClaim = !!(hasActiveVault && iPaid && onClaim)
+
         return (
           <li key={e.id} className="group flex items-center gap-4 px-5 py-4 transition-colors hover:bg-bg-elev/30">
             <button
@@ -88,21 +97,33 @@ export function ExpenseList({
                 {formatCurrency(Number(e.amount), e.currency || currency)}
               </div>
             </div>
-            <div className="flex shrink-0 gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
-              <button
-                onClick={() => onEdit(e)}
-                className="rounded-lg p-2 text-fg-dim hover:bg-bg-elev hover:text-fg"
-                aria-label={`Edit ${e.description}`}
-              >
-                <Pencil className="h-4 w-4" aria-hidden="true" />
-              </button>
-              <button
-                onClick={() => handleDelete(e.id)}
-                className="rounded-lg p-2 text-fg-dim hover:bg-danger/10 hover:text-danger"
-                aria-label={`Delete ${e.description}`}
-              >
-                <Trash2 className="h-4 w-4" aria-hidden="true" />
-              </button>
+            <div className="flex shrink-0 gap-1">
+              {canClaim && (
+                <button
+                  onClick={() => onClaim!(e)}
+                  className="inline-flex items-center gap-1 rounded-lg bg-neon-violet/10 px-2 py-1.5 text-xs font-medium text-neon-violet transition-colors hover:bg-neon-violet/20"
+                  aria-label={`Claim ${e.description} from vault`}
+                >
+                  <Zap className="h-3 w-3" aria-hidden="true" />
+                  Claim
+                </button>
+              )}
+              <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+                <button
+                  onClick={() => onEdit(e)}
+                  className="rounded-lg p-2 text-fg-dim hover:bg-bg-elev hover:text-fg"
+                  aria-label={`Edit ${e.description}`}
+                >
+                  <Pencil className="h-4 w-4" aria-hidden="true" />
+                </button>
+                <button
+                  onClick={() => handleDelete(e.id)}
+                  className="rounded-lg p-2 text-fg-dim hover:bg-danger/10 hover:text-danger"
+                  aria-label={`Delete ${e.description}`}
+                >
+                  <Trash2 className="h-4 w-4" aria-hidden="true" />
+                </button>
+              </div>
             </div>
           </li>
         )

@@ -26,6 +26,7 @@ export function AddExpenseDialog({
   currency,
   prefill,
   editId,
+  onCreated,
 }: {
   open: boolean
   onClose: () => void
@@ -34,6 +35,7 @@ export function AddExpenseDialog({
   currency: string
   prefill?: Prefill
   editId?: string
+  onCreated?: (expense: { id: string; description: string; amount: number; currency: string; paid_by: string }) => void
 }) {
   const [amount, setAmount] = useState('')
   const [description, setDescription] = useState('')
@@ -162,8 +164,17 @@ export function AddExpenseDialog({
         await update.mutateAsync({ id: editId, ...payload })
         push({ kind: 'success', message: 'Expense updated' })
       } else {
-        await create.mutateAsync(payload)
+        const created = await create.mutateAsync(payload)
         push({ kind: 'success', message: 'Expense added' })
+        if (onCreated && created) {
+          onCreated({
+            id: created.id,
+            description: payload.description,
+            amount: payload.amount,
+            currency: payload.currency,
+            paid_by: payload.paid_by,
+          })
+        }
       }
       onClose()
     } catch (e) {
