@@ -1,28 +1,42 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronDown, ChevronUp, Lock, Plus, ArrowDownToLine, ExternalLink, Users, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react'
+import { ChevronDown, ChevronUp, Lock, Plus, ArrowDownToLine, ExternalLink, Users, Loader2, AlertCircle, RefreshCw, X } from 'lucide-react'
 import { useGroupVaults, type Vault } from '@/lib/hooks/useVaults'
+import { useVaultSync } from '@/lib/hooks/useVaultSync'
 import { CreateVaultDialog } from '@/components/app/CreateVaultDialog'
 import { VaultDepositDialog } from '@/components/app/VaultDepositDialog'
+import { CloseVaultDialog } from '@/components/app/CloseVaultDialog'
+import { VaultRefunds } from '@/components/app/VaultRefunds'
+import { VaultAnalytics } from '@/components/app/VaultAnalytics'
 import { getExplorerTxUrl, chainName } from '@/lib/chains'
 import { formatCurrency } from '@/lib/balances'
 import { getFactoryAddress } from '@/lib/vaults/config'
 import { base, baseSepolia } from 'wagmi/chains'
+import { useAccount } from 'wagmi'
 
 function VaultCard({
   vault,
   onDeposit,
+  onClose,
 }: {
   vault: Vault
   onDeposit: (v: Vault) => void
+  onClose: (v: Vault) => void
 }) {
   const totalTarget = vault.target_per_member * vault.members.length
   const depositPct = totalTarget > 0 ? Math.min((vault.total_deposited / totalTarget) * 100, 100) : 0
   const isClosed = vault.status === 'closed'
+  const { address } = useAccount()
+  const sync = useVaultSync()
+  const isOwner = address?.toLowerCase() === vault.owner_address.toLowerCase()
+
+  const handleSync = () => {
+    sync.mutate({ vault_id: vault.id })
+  }
 
   return (
-    <div className={`rounded-2xl border p-5 transition-all ${isClosed ? 'border-border bg-bg-elev/20 opacity-70' : 'border-neon-violet/20 bg-gradient-to-br from-neon-violet/5 to-neon-cyan/5'}`}>
+    <div className={`rounded-2xl border p-5 transition-all ${isClosed ? 'border-border bg-bg-elev/20' : 'border-neon-violet/20 bg-gradient-to-br from-neon-violet/5 to-neon-cyan/5'}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
@@ -53,15 +67,30 @@ function VaultCard({
             </a>
           </div>
         </div>
-        {!isClosed && (
+        <div className="flex shrink-0 gap-1">
           <button
-            onClick={() => onDeposit(vault)}
-            className="shrink-0 inline-flex items-center gap-1 rounded-lg bg-gradient-to-br from-neon-violet to-neon-cyan px-3 py-1.5 text-xs font-medium text-bg shadow-sm transition-shadow hover:shadow-neon-violet/30"
+            onClick={handleSync}
+            disabled={sync.isPending}
+            className="rounded-lg p-1.5 text-fg-muted transition-colors hover:bg-bg-elev/60 hover:text-fg disabled:opacity-50"
+            aria-label="Sync vault state from chain"
+            title="Sync from chain"
           >
-            <ArrowDownToLine className="h-3 w-3" aria-hidden="true" />
-            Deposit
+            {sync.isPending ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+            ) : (
+              <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
+            )}
           </button>
-        )}
+          {!isClosed && (
+            <button
+              onClick={() => onDeposit(vault)}
+              className="inline-flex items-center gap-1 rounded-lg bg-gradient-to-br from-neon-violet to-neon-cyan px-3 py-1.5 text-xs font-medium text-bg shadow-sm transition-shadow hover:shadow-neon-violet/30"
+            >
+              <ArrowDownToLine className="h-3 w-3" aria-hidden="true" />
+              Deposit
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="mt-4">
@@ -94,12 +123,26 @@ function VaultCard({
           </div>
         </div>
         <div>
-          <div className="text-[10px] uppercase tracking-wider text-fg-dim">Available</div>
+          <div className="text-[10px] uppercase tracking-wider text-fg-dim">{isClosed ? 'Refunded' : 'Available'}</div>
           <div className="mt-0.5 tabular font-mono text-sm font-semibold text-neon-lime">
             {formatCurrency(vault.remaining_balance, 'USD')}
           </div>
         </div>
       </div>
+
+      {isOwner && !isClosed && (
+        <button
+          onClick={() => onClose(vault)}
+          className="mt-4 inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-danger/30 bg-danger/5 px-3 py-2 text-xs font-medium text-danger transition-colors hover:bg-danger/10"
+        >
+          <X className="h-3.5 w-3.5" aria-hidden="true" />
+          Close vault & refund
+        </button>
+      )}
+
+      {isClosed && <VaultRefunds vaultId={vault.id} chainId={vault.chain_id} />}
+
+      <VaultAnalytics vaultId={vault.id} />
     </div>
   )
 }
@@ -116,6 +159,7 @@ export function VaultSection({
   const [expanded, setExpanded] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
   const [depositVault, setDepositVault] = useState<Vault | null>(null)
+  const [closeVault, setCloseVault] = useState<Vault | null>(null)
   const { data: vaults, isLoading } = useGroupVaults(groupId)
 
   const factoryConfigured = !!(getFactoryAddress(base.id) || getFactoryAddress(baseSepolia.id))
@@ -123,7 +167,6 @@ export function VaultSection({
   const activeVaults = vaults?.filter((v) => v.status === 'active') || []
 
   if (!factoryConfigured && !hasVaults) {
-    // Don't show the section at all if vaults aren't configured and none exist
     return null
   }
 
@@ -187,7 +230,12 @@ export function VaultSection({
           ) : (
             <div className="space-y-3">
               {vaults!.map((v) => (
-                <VaultCard key={v.id} vault={v} onDeposit={setDepositVault} />
+                <VaultCard
+                  key={v.id}
+                  vault={v}
+                  onDeposit={setDepositVault}
+                  onClose={setCloseVault}
+                />
               ))}
               {factoryConfigured && (
                 <button
@@ -215,6 +263,13 @@ export function VaultSection({
           open={!!depositVault}
           onClose={() => setDepositVault(null)}
           vault={depositVault}
+        />
+      )}
+      {closeVault && (
+        <CloseVaultDialog
+          open={!!closeVault}
+          onClose={() => setCloseVault(null)}
+          vault={closeVault}
         />
       )}
     </section>
