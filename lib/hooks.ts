@@ -6,7 +6,6 @@ import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 
 async function requireSession() {
   const supabase = createSupabaseBrowserClient()
-  // Force-load session from storage before any RLS-protected write.
   const { data: { session } } = await supabase.auth.getSession()
   if (!session?.user) throw new Error('Not authenticated — please sign in again')
   return { supabase, user: session.user }
@@ -38,8 +37,6 @@ export function useCreateGroup() {
     mutationFn: async (input: { name: string; description?: string; currency?: string; cover_emoji?: string }) => {
       const { supabase, user } = await requireSession()
 
-      // Ensure profile row exists before FK insert (wallet users may race
-      // ahead of the handle_new_user trigger).
       await supabase.from('profiles').upsert(
         {
           id: user.id,
@@ -68,7 +65,6 @@ export function useCreateGroup() {
         role: 'owner',
       })
       if (memberErr) {
-        // Roll back the orphaned group so the user can retry cleanly.
         await supabase.from('groups').delete().eq('id', group.id)
         throw new Error(`Member insert: ${memberErr.message}`)
       }

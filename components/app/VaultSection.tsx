@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ChevronDown, ChevronUp, Lock, Plus, ArrowDownToLine, ExternalLink, Users, Loader2, AlertCircle, RefreshCw, X } from 'lucide-react'
 import { useGroupVaults, type Vault } from '@/lib/hooks/useVaults'
 import { useVaultSync } from '@/lib/hooks/useVaultSync'
@@ -9,20 +9,27 @@ import { VaultDepositDialog } from '@/components/app/VaultDepositDialog'
 import { CloseVaultDialog } from '@/components/app/CloseVaultDialog'
 import { VaultRefunds } from '@/components/app/VaultRefunds'
 import { VaultAnalytics } from '@/components/app/VaultAnalytics'
+import { VaultClaimDialog } from '@/components/app/VaultClaimDialog'
+import { ClaimableExpenses } from '@/components/app/ClaimableExpenses'
 import { getExplorerTxUrl, chainName } from '@/lib/chains'
 import { formatCurrency } from '@/lib/balances'
 import { getFactoryAddress } from '@/lib/vaults/config'
 import { base, baseSepolia } from 'wagmi/chains'
 import { useAccount } from 'wagmi'
+import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 
 function VaultCard({
   vault,
+  currentUserId,
   onDeposit,
   onClose,
+  onClaim,
 }: {
   vault: Vault
+  currentUserId: string | null
   onDeposit: (v: Vault) => void
   onClose: (v: Vault) => void
+  onClaim: (vault: Vault, expense: { id: string; description: string; amount: number; currency: string }) => void
 }) {
   const totalTarget = vault.target_per_member * vault.members.length
   const depositPct = totalTarget > 0 ? Math.min((vault.total_deposited / totalTarget) * 100, 100) : 0
@@ -130,6 +137,14 @@ function VaultCard({
         </div>
       </div>
 
+      {!isClosed && (
+        <ClaimableExpenses
+          vault={vault}
+          currentUserId={currentUserId}
+          onClaim={(expense) => onClaim(vault, expense)}
+        />
+      )}
+
       {isOwner && !isClosed && (
         <button
           onClick={() => onClose(vault)}
@@ -160,7 +175,17 @@ export function VaultSection({
   const [showCreate, setShowCreate] = useState(false)
   const [depositVault, setDepositVault] = useState<Vault | null>(null)
   const [closeVault, setCloseVault] = useState<Vault | null>(null)
+  const [claimContext, setClaimContext] = useState<{
+    vault: Vault
+    expense: { id: string; description: string; amount: number; currency: string }
+  } | null>(null)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const { data: vaults, isLoading } = useGroupVaults(groupId)
+
+  useEffect(() => {
+    const supabase = createSupabaseBrowserClient()
+    supabase.auth.getUser().then(({ data: { user } }) => setCurrentUserId(user?.id || null))
+  }, [])
 
   const factoryConfigured = !!(getFactoryAddress(base.id) || getFactoryAddress(baseSepolia.id))
   const hasVaults = vaults && vaults.length > 0
@@ -233,8 +258,10 @@ export function VaultSection({
                 <VaultCard
                   key={v.id}
                   vault={v}
+                  currentUserId={currentUserId}
                   onDeposit={setDepositVault}
                   onClose={setCloseVault}
+                  onClaim={(vault, expense) => setClaimContext({ vault, expense })}
                 />
               ))}
               {factoryConfigured && (
@@ -270,6 +297,14 @@ export function VaultSection({
           open={!!closeVault}
           onClose={() => setCloseVault(null)}
           vault={closeVault}
+        />
+      )}
+      {claimContext && (
+        <VaultClaimDialog
+          open={!!claimContext}
+          onClose={() => setClaimContext(null)}
+          vault={claimContext.vault}
+          expense={claimContext.expense}
         />
       )}
     </section>
