@@ -1,14 +1,14 @@
 // @integration: supabase
-// @integration: gemini
+// @integration: groq
 import { NextResponse } from 'next/server'
 import { createSupabaseServerClient, createSupabaseServiceClient } from '@/lib/supabase/server'
-import { GoogleGenerativeAI } from '@google/generative-ai'
+import Groq from 'groq-sdk'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
 
-const SYSTEM_PROMPT = `You are a receipt OCR engine. Extract structured data from this receipt image.
-Return ONLY valid JSON (no markdown, no code fences) with this exact shape:
+const SYSTEM_PROMPT = `You are a receipt OCR engine. Extract structured data from the receipt image.
+Return ONLY valid JSON (no markdown, no code fences, no commentary) with this exact shape:
 {
   "merchant": string | null,
   "date": string | null,
@@ -24,13 +24,11 @@ Rules:
 - Currency as 3-letter ISO code (USD, EUR, GBP, etc.) or null if unclear.
 - All amounts as positive numbers in major units (12.50 not 1250).
 - If image is not a receipt or unreadable, return exactly: {"error": "not a receipt"}.
-- Output raw JSON only — no code fences, no commentary.`
+- Output raw JSON only.`
 
 const MODEL_CANDIDATES = [
-  'gemini-2.0-flash',
-  'gemini-2.0-flash-001',
-  'gemini-flash-latest',
-  'gemini-1.5-flash-latest',
+  'llama-3.2-90b-vision-preview',
+  'llama-3.2-11b-vision-preview',
 ]
 
 function stripCodeFences(s: string): string {
@@ -41,37 +39,48 @@ function stripCodeFences(s: string): string {
   return trimmed.trim()
 }
 
-async function runGemini(apiKey: string, mimeType: string, base64: string) {
-  const genAI = new GoogleGenerativeAI(apiKey)
+async function runGroq(apiKey: string, mimeType: string, base64: string) {
+  const groq = new Groq({ apiKey })
   let lastError: Error | null = null
 
   for (const modelName of MODEL_CANDIDATES) {
     try {
-      const model = genAI.getGenerativeModel({
+      const completion = await groq.chat.completions.create({
         model: modelName,
-        generationConfig: {
-          temperature: 0.1,
-          maxOutputTokens: 2048,
-          responseMimeType: 'application/json',
-        },
+        temperature: 0.1,
+        max_tokens: 2048,
+        response_format: { type: 'json_object' },
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: SYSTEM_PROMPT },
+              {
+                type: 'image_url',
+                image_url: { url: `data:${mimeType};base64,${base64}` },
+              },
+            ],
+          },
+        ],
       })
 
-      const result = await model.generateContent([
-        { text: SYSTEM_PROMPT },
-        { inlineData: { mimeType, data: base64 } },
-      ])
-
-      return { text: result.response.text(), modelUsed: modelName }
-    } catch (e) {
+      const text = completion.choices[0]?.message?.content || ''
+      return { text, modelUsed: modelName }
+    } catch (e: any) {
       lastError = e instanceof Error ? e : new Error(String(e))
-      // Only fall through on 404 (model retired); other errors abort
-      if (!lastError.message.includes('404') && !lastError.message.includes('not found')) {
+      const msg = lastError.message.toLowerCase()
+      if (
+        !msg.includes('decommissioned') &&
+        !msg.includes('not found') &&
+        !msg.includes('does not exist') &&
+        !msg.includes('model_not_found')
+      ) {
         throw lastError
       }
     }
   }
 
-  throw lastError || new Error('All Gemini models failed')
+  throw lastError || new Error('All Groq vision models failed')
 }
 
 export async function POST(req: Request) {
@@ -117,12 +126,12 @@ export async function POST(req: Request) {
     let errorMessage: string | null = null
 
     try {
-      if (!process.env.GEMINI_API_KEY) {
-        throw new Error('GEMINI_API_KEY not configured — add it in Vercel env vars')
+      if (!process.env.GROQ_API_KEY) {
+        throw new Error('GROQ_API_KEY not configured — get one free at console.groq.com')
       }
 
-      const { text } = await runGemini(
-        process.env.GEMINI_API_KEY,
+      const { text } = await runGroq(
+        process.env.GROQ_API_KEY,
         file.type,
         buffer.toString('base64')
       )
@@ -140,7 +149,7 @@ export async function POST(req: Request) {
         ocrStatus = 'success'
       }
     } catch (e) {
-      errorMessage = e instanceof Error ? e.message : 'Gemini OCR failed'
+      errorMessage = e instanceof Error ? e.message : 'Groq OCR failed'
       ocrStatus = 'failed'
     }
 
