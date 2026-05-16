@@ -3,14 +3,16 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import type { User } from '@supabase/supabase-js'
-import { Home, Receipt, CreditCard, LogOut, Wallet, Activity, Settings as SettingsIcon } from 'lucide-react'
+import { Home, Receipt, CreditCard, LogOut, Wallet, Activity, Settings as SettingsIcon, Trophy } from 'lucide-react'
 import { useDisconnect } from 'wagmi'
 import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 import { NotificationBell } from '@/components/app/NotificationBell'
+import { MobileBottomNav } from '@/components/app/MobileBottomNav'
 
 const navItems = [
   { href: '/app', label: 'Groups', icon: Home },
   { href: '/app/activity', label: 'Activity', icon: Activity },
+  { href: '/app/stats', label: 'Stats', icon: Trophy },
   { href: '/app/bills', label: 'My bills', icon: CreditCard },
   { href: '/app/receipts', label: 'Receipts', icon: Receipt },
   { href: '/app/settings', label: 'Settings', icon: SettingsIcon },
@@ -31,7 +33,8 @@ export function AppShell({ user, children }: { user: User; children: React.React
   }
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-[100dvh]">
+      {/* Desktop sidebar — hidden below lg breakpoint */}
       <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-border/60 bg-bg-elev/40 backdrop-blur-xl lg:flex">
         <div className="flex items-center justify-between px-6 py-6">
           <Link href="/" className="flex items-center gap-2 font-display text-lg font-bold tracking-tight">
@@ -76,37 +79,25 @@ export function AppShell({ user, children }: { user: User; children: React.React
         </div>
       </aside>
 
-      <header className="lg:hidden sticky top-0 z-40 glass border-b border-border/50 px-4 py-3 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2 font-display font-bold">
-          <span className="inline-block h-2 w-2 rounded-full bg-neon-lime" aria-hidden="true" />
+      {/* Mobile top bar — visible below lg */}
+      <header
+        className="sticky top-0 z-30 flex items-center justify-between border-b border-border/50 bg-bg-elev/80 px-4 py-3 backdrop-blur-xl lg:hidden"
+        style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top, 0px))' }}
+      >
+        <Link href="/app" className="flex items-center gap-2 font-display font-bold">
+          <span className="inline-block h-2 w-2 rounded-full bg-neon-lime shadow-[0_0_12px_rgb(163,230,53)]" aria-hidden="true" />
           SplitChain
         </Link>
-        <nav className="flex items-center gap-1">
-          {navItems.map(({ href, label, icon: Icon }) => {
-            const active = href === '/app'
-              ? pathname === '/app' || pathname.startsWith('/app/groups')
-              : pathname.startsWith(href)
-            return (
-              <Link
-                key={href}
-                href={href}
-                aria-label={label}
-                className={`rounded-lg p-2 transition-colors ${active ? 'text-neon-violet' : 'text-fg-muted hover:text-fg'}`}
-              >
-                <Icon className="h-4 w-4" aria-hidden="true" />
-              </Link>
-            )
-          })}
-          <NotificationBell />
-          <button onClick={handleSignOut} className="rounded-lg p-2 text-fg-muted hover:text-fg" aria-label="Sign out">
-            <LogOut className="h-4 w-4" aria-hidden="true" />
-          </button>
-        </nav>
+        <NotificationBell />
       </header>
 
-      <main className="flex-1">
-        <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-10 lg:py-10">{children}</div>
+      <main className="min-w-0 flex-1">
+        <div className="mx-auto max-w-6xl px-4 pt-4 pb-28 sm:px-6 sm:pt-6 lg:px-10 lg:pt-10 lg:pb-10">
+          {children}
+        </div>
       </main>
+
+      <MobileBottomNav />
     </div>
   )
 }
