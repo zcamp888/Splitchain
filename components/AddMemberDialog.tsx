@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { X, Loader2, UserPlus } from 'lucide-react'
 import { useAddMemberByEmail } from '@/lib/hooks'
 import { useToast } from '@/components/Toaster'
+import { useBodyScrollLock } from '@/lib/useBodyScrollLock'
 
 export function AddMemberDialog({
   open,
@@ -17,6 +18,7 @@ export function AddMemberDialog({
   const [email, setEmail] = useState('')
   const add = useAddMemberByEmail(groupId)
   const { push } = useToast()
+  useBodyScrollLock(open)
 
   useEffect(() => {
     if (open) setEmail('')
@@ -46,17 +48,19 @@ export function AddMemberDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-bg/80 p-4 backdrop-blur-sm"
+      className="modal-backdrop"
       role="dialog"
       aria-modal="true"
       aria-labelledby="add-member-title"
       onClick={onClose}
     >
       <div
-        className="glass-strong w-full max-w-md rounded-3xl p-6 shadow-2xl"
+        className="sheet-container"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-start justify-between">
+        <div className="sheet-grabber" aria-hidden="true" />
+
+        <div className="flex items-start justify-between gap-3 px-6 pt-2">
           <div>
             <h2 id="add-member-title" className="font-display text-xl font-bold tracking-tight">
               Add member
@@ -67,14 +71,14 @@ export function AddMemberDialog({
           </div>
           <button
             onClick={onClose}
-            className="text-fg-muted hover:text-fg"
+            className="btn-icon -mr-2 text-fg-muted hover:text-fg"
             aria-label="Close dialog"
           >
             <X className="h-5 w-5" aria-hidden="true" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-5 space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4 px-6 py-5">
           <div>
             <label htmlFor="member-email" className="mb-1.5 block text-xs text-fg-muted">
               Email address
@@ -91,14 +95,14 @@ export function AddMemberDialog({
               className="input-base"
             />
           </div>
-          <div className="flex justify-end gap-2 pt-1">
-            <button type="button" onClick={onClose} className="btn-ghost">
+          <div className="flex gap-2 pt-1">
+            <button type="button" onClick={onClose} className="btn-ghost flex-1">
               Cancel
             </button>
             <button
               type="submit"
               disabled={add.isPending || !email.trim()}
-              className="btn-primary"
+              className="btn-primary flex-1"
             >
               {add.isPending ? (
                 <>

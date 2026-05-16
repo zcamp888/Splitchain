@@ -17,12 +17,17 @@ export const metadata: Metadata = {
     statusBarStyle: 'black-translucent',
     title: 'SplitChain',
   },
+  formatDetection: {
+    telephone: false,
+  },
 }
 
 export const viewport: Viewport = {
   themeColor: '#0a0b14',
   width: 'device-width',
   initialScale: 1,
+  maximumScale: 5,
+  viewportFit: 'cover',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

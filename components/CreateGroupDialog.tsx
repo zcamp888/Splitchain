@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { X, Loader2 } from 'lucide-react'
 import { useCreateGroup } from '@/lib/hooks'
 import { useToast } from '@/components/Toaster'
+import { useBodyScrollLock } from '@/lib/useBodyScrollLock'
 
 const EMOJIS = ['💸', '🏖️', '🍕', '🏠', '✈️', '🎉', '⛷️', '🚗', '🍻', '🎬', '☕', '🛒']
 const CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD']
@@ -17,6 +18,7 @@ export function CreateGroupDialog({ open, onClose }: { open: boolean; onClose: (
   const create = useCreateGroup()
   const { push } = useToast()
   const router = useRouter()
+  useBodyScrollLock(open)
 
   useEffect(() => {
     if (open) {
@@ -57,30 +59,32 @@ export function CreateGroupDialog({ open, onClose }: { open: boolean; onClose: (
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-bg/80 p-4 backdrop-blur-sm"
+      className="modal-backdrop"
       role="dialog"
       aria-modal="true"
       aria-labelledby="create-group-title"
       onClick={onClose}
     >
       <div
-        className="glass-strong w-full max-w-md rounded-3xl p-6 shadow-2xl"
+        className="sheet-container"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-start justify-between">
+        <div className="sheet-grabber" aria-hidden="true" />
+
+        <div className="flex items-start justify-between gap-3 px-6 pt-2">
           <h2 id="create-group-title" className="font-display text-xl font-bold tracking-tight">
             New group
           </h2>
           <button
             onClick={onClose}
-            className="text-fg-muted hover:text-fg"
+            className="btn-icon -mr-2 text-fg-muted hover:text-fg"
             aria-label="Close dialog"
           >
             <X className="h-5 w-5" aria-hidden="true" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-5 space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4 px-6 py-5">
           <div>
             <label htmlFor="group-name" className="mb-1.5 block text-xs text-fg-muted">
               Name
@@ -117,13 +121,13 @@ export function CreateGroupDialog({ open, onClose }: { open: boolean; onClose: (
 
           <div>
             <span className="mb-1.5 block text-xs text-fg-muted">Cover emoji</span>
-            <div className="flex flex-wrap gap-1.5">
+            <div className="grid grid-cols-6 gap-1.5">
               {EMOJIS.map((e) => (
                 <button
                   key={e}
                   type="button"
                   onClick={() => setEmoji(e)}
-                  className={`flex h-10 w-10 items-center justify-center rounded-xl text-xl transition-all ${emoji === e ? 'bg-neon-violet/20 ring-2 ring-neon-violet/60' : 'bg-bg-elev/60 hover:bg-bg-elev'}`}
+                  className={`flex h-12 items-center justify-center rounded-xl text-2xl transition-all active:scale-95 ${emoji === e ? 'bg-neon-violet/20 ring-2 ring-neon-violet/60' : 'bg-bg-elev/60'}`}
                   aria-label={`Choose ${e}`}
                   aria-pressed={emoji === e}
                 >
@@ -152,14 +156,14 @@ export function CreateGroupDialog({ open, onClose }: { open: boolean; onClose: (
             </select>
           </div>
 
-          <div className="flex justify-end gap-2 pt-2">
-            <button type="button" onClick={onClose} className="btn-ghost">
+          <div className="flex gap-2 pt-2">
+            <button type="button" onClick={onClose} className="btn-ghost flex-1">
               Cancel
             </button>
             <button
               type="submit"
               disabled={create.isPending || !name.trim()}
-              className="btn-primary"
+              className="btn-primary flex-1"
             >
               {create.isPending ? (
                 <>
@@ -167,7 +171,7 @@ export function CreateGroupDialog({ open, onClose }: { open: boolean; onClose: (
                   Creating…
                 </>
               ) : (
-                'Create group'
+                'Create'
               )}
             </button>
           </div>

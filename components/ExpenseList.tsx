@@ -31,7 +31,7 @@ export function ExpenseList({
 
   if (expenses.length === 0) {
     return (
-      <div className="glass rounded-2xl p-10 text-center">
+      <div className="glass rounded-2xl p-8 text-center sm:p-10">
         <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-neon-cyan/10 text-neon-cyan">
           <Receipt className="h-6 w-6" aria-hidden="true" />
         </div>
@@ -69,10 +69,10 @@ export function ExpenseList({
         const canClaim = !!(hasActiveVault && iPaid && onClaim)
 
         return (
-          <li key={e.id} className="group flex items-center gap-4 px-5 py-4 transition-colors hover:bg-bg-elev/30">
+          <li key={e.id} className="group flex items-center gap-3 px-4 py-3 transition-colors hover:bg-bg-elev/30 sm:gap-4 sm:px-5 sm:py-4">
             <button
               onClick={() => onEdit(e)}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-neon-violet/10 text-neon-violet transition-colors hover:bg-neon-violet/20"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-neon-violet/10 text-neon-violet transition-colors active:scale-95 hover:bg-neon-violet/20"
               aria-label={`Edit ${e.description}`}
             >
               <Receipt className="h-5 w-5" aria-hidden="true" />
@@ -83,47 +83,44 @@ export function ExpenseList({
               aria-label={`Edit ${e.description}`}
             >
               <div className="font-medium text-balance line-clamp-1">{e.description}</div>
-              <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-fg-muted">
-                <span>{payerLabel} paid</span>
-                <span>•</span>
+              <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-fg-muted">
+                <span className="truncate max-w-[120px] sm:max-w-none">{payerLabel} paid</span>
+                <span aria-hidden="true">·</span>
                 <span>{date}</span>
-                {e.category && (<><span>•</span><span className="capitalize">{e.category}</span></>)}
-                <span>•</span>
-                <span>split {e.splits?.length || 0} ways</span>
+                <span aria-hidden="true" className="hidden sm:inline">·</span>
+                <span className="hidden sm:inline">split {e.splits?.length || 0}</span>
               </div>
             </button>
             <div className="shrink-0 text-right">
-              <div className="tabular font-mono font-semibold">
+              <div className="tabular font-mono text-sm font-semibold sm:text-base">
                 {formatCurrency(Number(e.amount), e.currency || currency)}
               </div>
             </div>
-            <div className="flex shrink-0 gap-1">
+            <div className="flex shrink-0 gap-0.5">
               {canClaim && (
                 <button
                   onClick={() => onClaim!(e)}
-                  className="inline-flex items-center gap-1 rounded-lg bg-neon-violet/10 px-2 py-1.5 text-xs font-medium text-neon-violet transition-colors hover:bg-neon-violet/20"
+                  className="inline-flex min-h-[44px] items-center gap-1 rounded-lg bg-neon-violet/10 px-2.5 text-xs font-medium text-neon-violet transition-colors active:scale-95 hover:bg-neon-violet/20"
                   aria-label={`Claim ${e.description} from vault`}
                 >
-                  <Zap className="h-3 w-3" aria-hidden="true" />
-                  Claim
+                  <Zap className="h-3.5 w-3.5" aria-hidden="true" />
+                  <span className="hidden sm:inline">Claim</span>
                 </button>
               )}
-              <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
-                <button
-                  onClick={() => onEdit(e)}
-                  className="rounded-lg p-2 text-fg-dim hover:bg-bg-elev hover:text-fg"
-                  aria-label={`Edit ${e.description}`}
-                >
-                  <Pencil className="h-4 w-4" aria-hidden="true" />
-                </button>
-                <button
-                  onClick={() => handleDelete(e.id)}
-                  className="rounded-lg p-2 text-fg-dim hover:bg-danger/10 hover:text-danger"
-                  aria-label={`Delete ${e.description}`}
-                >
-                  <Trash2 className="h-4 w-4" aria-hidden="true" />
-                </button>
-              </div>
+              <button
+                onClick={() => onEdit(e)}
+                className="btn-icon text-fg-dim hover:bg-bg-elev hover:text-fg lg:opacity-0 lg:transition-opacity lg:group-hover:opacity-100 lg:group-focus-within:opacity-100"
+                aria-label={`Edit ${e.description}`}
+              >
+                <Pencil className="h-4 w-4" aria-hidden="true" />
+              </button>
+              <button
+                onClick={() => handleDelete(e.id)}
+                className="btn-icon text-fg-dim hover:bg-danger/10 hover:text-danger lg:opacity-0 lg:transition-opacity lg:group-hover:opacity-100 lg:group-focus-within:opacity-100"
+                aria-label={`Delete ${e.description}`}
+              >
+                <Trash2 className="h-4 w-4" aria-hidden="true" />
+              </button>
             </div>
           </li>
         )

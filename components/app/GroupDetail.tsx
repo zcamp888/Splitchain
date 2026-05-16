@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowLeft, UserPlus, Loader2, Receipt as ReceiptIcon, Wallet, TrendingUp, CheckCircle2, Zap, Settings, ExternalLink } from 'lucide-react'
+import { ArrowLeft, UserPlus, Loader2, Receipt as ReceiptIcon, Wallet, TrendingUp, CheckCircle2, Zap, Settings, ExternalLink, Download } from 'lucide-react'
 import { useGroupDetail, useGroupExpenses, useGroupSettlements, useCreateSettlement } from '@/lib/hooks'
 import { useMarkGroupSeen } from '@/lib/hooks/useActivity'
 import { useGroupVaults } from '@/lib/hooks/useVaults'
@@ -84,10 +84,7 @@ export function GroupDetail({ groupId }: { groupId: string }) {
   }
 
   const handleExpenseCreated = (expense: { id: string; description: string; amount: number; currency: string; paid_by: string }) => {
-    // Auto-prompt vault claim only if there's an active vault, the current user paid,
-    // and the expense is in USDC-convertible terms (we let the user decide the amount).
     if (activeVault && currentUserId && expense.paid_by === currentUserId) {
-      // Small delay so the close animation finishes first
       setTimeout(() => {
         setClaimExpense(expense)
       }, 300)
@@ -107,7 +104,7 @@ export function GroupDetail({ groupId }: { groupId: string }) {
 
   if (!group) {
     return (
-      <div className="glass rounded-2xl p-12 text-center">
+      <div className="glass rounded-2xl p-8 text-center sm:p-12">
         <h2 className="font-display text-xl font-semibold">Group not found</h2>
         <Link href="/app" className="btn-ghost mt-4 inline-flex">Back to groups</Link>
       </div>
@@ -118,44 +115,46 @@ export function GroupDetail({ groupId }: { groupId: string }) {
 
   return (
     <div>
-      <Link href="/app" className="mb-4 inline-flex items-center gap-1.5 text-sm text-fg-muted hover:text-fg">
+      <Link href="/app" className="mb-3 inline-flex items-center gap-1.5 text-sm text-fg-muted hover:text-fg sm:mb-4">
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />
         All groups
       </Link>
 
-      <header className="glass-strong rounded-3xl p-6 sm:p-8">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="flex items-start gap-4">
-            <div className="text-5xl" aria-hidden="true">{group.cover_emoji}</div>
+      <header className="glass-strong rounded-2xl p-5 sm:rounded-3xl sm:p-6 lg:p-8">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex min-w-0 items-start gap-3 sm:gap-4">
+            <div className="text-4xl sm:text-5xl" aria-hidden="true">{group.cover_emoji}</div>
             <div className="min-w-0">
-              <h1 className="font-display text-2xl font-bold tracking-tight sm:text-3xl text-balance">{group.name}</h1>
-              {group.description && <p className="mt-1 text-sm text-fg-muted text-pretty">{group.description}</p>}
-              <div className="mt-2 flex flex-wrap gap-3 text-xs text-fg-dim">
-                <span>{group.members.length} member{group.members.length === 1 ? '' : 's'}</span>
-                <span>·</span>
+              <h1 className="font-display text-xl font-bold tracking-tight sm:text-2xl lg:text-3xl text-balance">{group.name}</h1>
+              {group.description && <p className="mt-1 text-sm text-fg-muted text-pretty line-clamp-2">{group.description}</p>}
+              <div className="mt-2 flex flex-wrap gap-x-2 text-xs text-fg-dim">
+                <span>{group.members.length} {group.members.length === 1 ? 'member' : 'members'}</span>
+                <span aria-hidden="true">·</span>
                 <span>{group.currency}</span>
-                <span>·</span>
-                <span className="tabular">{formatCurrency(totalSpent, group.currency)} total</span>
+                <span aria-hidden="true">·</span>
+                <span className="tabular">{formatCurrency(totalSpent, group.currency)}</span>
               </div>
             </div>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <ExportMenu groupId={groupId} groupName={group.name} />
-            <button onClick={() => setShowSettings(true)} className="btn-ghost" aria-label="Group settings">
+          <div className="flex shrink-0 gap-1">
+            <button onClick={() => setShowSettings(true)} className="btn-icon border border-border-strong bg-bg-elev/60 text-fg-muted hover:text-fg" aria-label="Group settings">
               <Settings className="h-4 w-4" aria-hidden="true" />
             </button>
-            <button onClick={() => setShowInvite(true)} className="btn-ghost">
+            <button onClick={() => setShowInvite(true)} className="btn-icon border border-border-strong bg-bg-elev/60 text-fg-muted hover:text-fg" aria-label="Invite member">
               <UserPlus className="h-4 w-4" aria-hidden="true" />
-              Invite
-            </button>
-            <button onClick={() => { setEditExpense(null); setShowAdd(true) }} className="btn-primary">
-              <ReceiptIcon className="h-4 w-4" aria-hidden="true" />
-              Add expense
             </button>
           </div>
         </div>
 
-        <div className="mt-6 flex flex-wrap gap-2">
+        <button
+          onClick={() => { setEditExpense(null); setShowAdd(true) }}
+          className="btn-primary mt-5 w-full sm:w-auto"
+        >
+          <ReceiptIcon className="h-4 w-4" aria-hidden="true" />
+          Add expense
+        </button>
+
+        <div className="mt-5 flex flex-wrap gap-1.5 sm:gap-2">
           {group.members.map((m: any) => {
             const bal = balances.find((b) => b.user_id === m.user_id)?.net || 0
             const positive = bal > 0.01
@@ -164,7 +163,7 @@ export function GroupDetail({ groupId }: { groupId: string }) {
             const label = m.profile?.display_name || m.profile?.email || (wallet ? `${wallet.slice(0, 6)}…${wallet.slice(-4)}` : 'Member')
             return (
               <div key={m.user_id} className="flex items-center gap-2 rounded-full border border-border-strong bg-bg-elev/60 px-3 py-1.5 text-xs">
-                <span className="font-medium">{label}</span>
+                <span className="max-w-[100px] truncate font-medium sm:max-w-none">{label}</span>
                 <span className={`tabular font-mono ${positive ? 'text-success' : negative ? 'text-danger' : 'text-fg-dim'}`}>
                   {positive && '+'}
                   {formatCurrency(bal, group.currency)}
@@ -175,17 +174,17 @@ export function GroupDetail({ groupId }: { groupId: string }) {
         </div>
       </header>
 
-      <div className="mt-6">
+      <div className="mt-5 sm:mt-6">
         <VaultSection groupId={groupId} groupName={group.name} members={group.members} />
       </div>
 
       {transfers.length > 0 && (
-        <section className="mt-6 glass rounded-2xl p-6">
-          <h2 className="flex items-center gap-2 font-display text-lg font-semibold">
+        <section className="mt-5 glass rounded-2xl p-5 sm:mt-6 sm:p-6">
+          <h2 className="flex items-center gap-2 font-display text-base font-semibold sm:text-lg">
             <Wallet className="h-4 w-4 text-neon-cyan" aria-hidden="true" />
             Suggested settlements
           </h2>
-          <p className="mt-1 text-sm text-fg-muted">Minimum transfers to settle the group.</p>
+          <p className="mt-1 text-sm text-fg-muted">Minimum transfers to settle.</p>
           <ul className="mt-4 space-y-2">
             {transfers.map((t, i) => {
               const from = memberMap.get(t.from)
@@ -195,32 +194,36 @@ export function GroupDetail({ groupId }: { groupId: string }) {
               const iAmDebtor = currentUserId === t.from
               const recipientHasWallet = !!to?.wallet_address
               return (
-                <li key={i} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-bg-elev/40 px-4 py-3 text-sm">
-                  <div className="flex min-w-0 items-center gap-2">
-                    <span className="truncate font-medium">{fromLabel}</span>
-                    <span className="text-fg-dim">pays</span>
-                    <span className="truncate font-medium">{toLabel}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
+                <li key={i} className="rounded-xl border border-border bg-bg-elev/40 px-4 py-3 text-sm">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className="truncate font-medium">{fromLabel}</span>
+                      <span className="text-fg-dim" aria-hidden="true">→</span>
+                      <span className="truncate font-medium">{toLabel}</span>
+                    </div>
                     <span className="tabular font-mono font-semibold text-neon-lime">{formatCurrency(t.amount, group.currency)}</span>
-                    {iAmDebtor && recipientHasWallet && (
-                      <button
-                        onClick={() => setOnChainTx({ from: t.from, to: t.to, amount: t.amount, toProfile: to })}
-                        className="inline-flex items-center gap-1 rounded-lg bg-gradient-to-br from-neon-violet to-neon-cyan px-2.5 py-1 text-xs font-medium text-bg shadow-sm hover:shadow-neon-violet/30 transition-shadow"
-                      >
-                        <Zap className="h-3 w-3" aria-hidden="true" />
-                        Pay on-chain
-                      </button>
-                    )}
-                    <button
-                      onClick={() => handleMarkPaid(t.from, t.to, t.amount)}
-                      disabled={settle.isPending}
-                      className="inline-flex items-center gap-1 rounded-lg border border-border-strong bg-bg-card px-2.5 py-1 text-xs hover:border-success/40 hover:text-success disabled:opacity-50"
-                    >
-                      <CheckCircle2 className="h-3 w-3" aria-hidden="true" />
-                      Mark paid
-                    </button>
                   </div>
+                  {iAmDebtor && (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {recipientHasWallet && (
+                        <button
+                          onClick={() => setOnChainTx({ from: t.from, to: t.to, amount: t.amount, toProfile: to })}
+                          className="inline-flex flex-1 min-h-[40px] items-center justify-center gap-1 rounded-lg bg-gradient-to-br from-neon-violet to-neon-cyan px-3 text-xs font-medium text-bg shadow-sm active:scale-95"
+                        >
+                          <Zap className="h-3.5 w-3.5" aria-hidden="true" />
+                          Pay on-chain
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleMarkPaid(t.from, t.to, t.amount)}
+                        disabled={settle.isPending}
+                        className="inline-flex flex-1 min-h-[40px] items-center justify-center gap-1 rounded-lg border border-border-strong bg-bg-card px-3 text-xs active:scale-95 hover:border-success/40 hover:text-success disabled:opacity-50"
+                      >
+                        <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
+                        Mark paid
+                      </button>
+                    </div>
+                  )}
                 </li>
               )
             })}
@@ -229,8 +232,8 @@ export function GroupDetail({ groupId }: { groupId: string }) {
       )}
 
       {recentSettlements.length > 0 && (
-        <section className="mt-6 glass rounded-2xl p-6">
-          <h2 className="flex items-center gap-2 font-display text-lg font-semibold">
+        <section className="mt-5 glass rounded-2xl p-5 sm:mt-6 sm:p-6">
+          <h2 className="flex items-center gap-2 font-display text-base font-semibold sm:text-lg">
             <CheckCircle2 className="h-4 w-4 text-success" aria-hidden="true" />
             Recent settlements
           </h2>
@@ -244,7 +247,7 @@ export function GroupDetail({ groupId }: { groupId: string }) {
                 <li key={s.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/60 bg-bg-elev/30 px-3 py-2 text-xs">
                   <div className="flex min-w-0 items-center gap-2">
                     <span className="font-medium">{fromLabel}</span>
-                    <span className="text-fg-dim">→</span>
+                    <span className="text-fg-dim" aria-hidden="true">→</span>
                     <span className="font-medium">{toLabel}</span>
                     {s.method === 'onchain' && (
                       <span className="rounded-full bg-neon-violet/10 px-1.5 py-0.5 text-[10px] text-neon-violet">on-chain</span>
@@ -253,7 +256,6 @@ export function GroupDetail({ groupId }: { groupId: string }) {
                   <div className="flex items-center gap-2">
                     <span className="tabular font-mono">
                       {formatCurrency(Number(s.amount), s.currency)}
-                      {s.token_symbol && s.token_symbol !== s.currency && <span className="ml-1 text-fg-dim">({s.token_symbol})</span>}
                     </span>
                     {s.tx_hash && s.chain_id && (
                       <a
@@ -274,15 +276,18 @@ export function GroupDetail({ groupId }: { groupId: string }) {
         </section>
       )}
 
-      <div className="mt-6">
+      <div className="mt-5 sm:mt-6">
         <RecurringList groupId={groupId} members={group.members} currency={group.currency} />
       </div>
 
-      <section className="mt-6">
-        <h2 className="mb-4 flex items-center gap-2 font-display text-lg font-semibold">
-          <TrendingUp className="h-4 w-4 text-neon-violet" aria-hidden="true" />
-          Recent expenses
-        </h2>
+      <section className="mt-5 sm:mt-6">
+        <div className="mb-3 flex items-center justify-between sm:mb-4">
+          <h2 className="flex items-center gap-2 font-display text-base font-semibold sm:text-lg">
+            <TrendingUp className="h-4 w-4 text-neon-violet" aria-hidden="true" />
+            Recent expenses
+          </h2>
+          <ExportMenu groupId={groupId} groupName={group.name} />
+        </div>
         <ExpenseList
           groupId={groupId}
           expenses={expenses || []}

@@ -29,8 +29,17 @@ export function PersonalDashboard() {
   const exportPersonal = useExportPersonalCSV()
   const { push } = useToast()
 
+  // Open create dialog if launched via PWA shortcut
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('new') === 'group') {
+      setShowCreate(true)
+      window.history.replaceState({}, '', window.location.pathname)
+    }
+  }, [])
+
   // Auto-materialize any due recurring expenses on dashboard load.
-  // Throttled to once per 6 hours via localStorage.
   useEffect(() => {
     if (typeof window === 'undefined') return
     const last = localStorage.getItem('sc:recurring:last')
@@ -41,9 +50,7 @@ export function PersonalDashboard() {
       if (count && count > 0) {
         push({ kind: 'success', message: `${count} recurring expense${count === 1 ? '' : 's'} added` })
       }
-    }).catch(() => {
-      // Silent — don't bother user if RPC fails
-    })
+    }).catch(() => {})
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -65,9 +72,9 @@ export function PersonalDashboard() {
 
   return (
     <div>
-      <header className="mb-8 flex items-end justify-between gap-4">
-        <div>
-          <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">Dashboard</h1>
+      <header className="mb-6 flex flex-wrap items-end justify-between gap-3 sm:mb-8">
+        <div className="min-w-0">
+          <h1 className="font-display text-2xl font-bold tracking-tight sm:text-3xl lg:text-4xl">Dashboard</h1>
           <p className="mt-1 text-sm text-fg-muted">Where you stand across all your groups.</p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -75,7 +82,7 @@ export function PersonalDashboard() {
             <button
               onClick={handleExport}
               disabled={exportPersonal.isPending}
-              className="btn-ghost"
+              className="btn-ghost px-3 py-2 text-sm sm:px-5"
               aria-label="Export all your activity to CSV"
             >
               {exportPersonal.isPending ? (
@@ -83,10 +90,10 @@ export function PersonalDashboard() {
               ) : (
                 <Download className="h-4 w-4" aria-hidden="true" />
               )}
-              Export
+              <span className="hidden sm:inline">Export</span>
             </button>
           )}
-          <button onClick={() => setShowCreate(true)} className="btn-primary">
+          <button onClick={() => setShowCreate(true)} className="btn-primary px-3 py-2 text-sm sm:px-5">
             <Plus className="h-4 w-4" aria-hidden="true" />
             New group
           </button>
@@ -99,7 +106,7 @@ export function PersonalDashboard() {
           <span className="ml-2 text-sm">Loading…</span>
         </div>
       ) : !hasGroups && (!dash?.overdueBills.length && !dash?.upcomingBills.length) ? (
-        <div className="glass rounded-3xl p-12 text-center">
+        <div className="glass rounded-3xl p-8 text-center sm:p-12">
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-neon-violet/20 to-neon-cyan/20 text-neon-cyan">
             <Sparkles className="h-7 w-7" aria-hidden="true" />
           </div>
@@ -115,25 +122,25 @@ export function PersonalDashboard() {
       ) : (
         <>
           {dash && (owedToYou || youOwe) && (
-            <section className="mb-8 grid gap-4 sm:grid-cols-2">
-              <div className={`glass-strong rounded-3xl p-6 transition-all ${netPositive ? 'border-success/30' : 'border-border/60'}`}>
+            <section className="mb-6 grid gap-3 sm:mb-8 sm:gap-4 sm:grid-cols-2">
+              <div className={`glass-strong rounded-2xl p-5 transition-all sm:rounded-3xl sm:p-6 ${netPositive ? 'border-success/30' : 'border-border/60'}`}>
                 <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-fg-muted">
                   <TrendingUp className="h-3.5 w-3.5 text-success" aria-hidden="true" />
                   You&rsquo;re owed
                 </div>
-                <div className="mt-2 tabular font-mono text-3xl font-bold text-success sm:text-4xl text-balance">
+                <div className="mt-2 tabular font-mono text-2xl font-bold text-success text-balance sm:text-3xl lg:text-4xl">
                   {owedToYou || formatCurrency(0, 'USD')}
                 </div>
                 <div className="mt-1 text-xs text-fg-dim">
                   Across {dash.groupBalances.filter((g) => g.net > 0.01).length} group{dash.groupBalances.filter((g) => g.net > 0.01).length === 1 ? '' : 's'}
                 </div>
               </div>
-              <div className={`glass-strong rounded-3xl p-6 transition-all ${!netPositive && youOwe ? 'border-danger/30' : 'border-border/60'}`}>
+              <div className={`glass-strong rounded-2xl p-5 transition-all sm:rounded-3xl sm:p-6 ${!netPositive && youOwe ? 'border-danger/30' : 'border-border/60'}`}>
                 <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-fg-muted">
                   <TrendingDown className="h-3.5 w-3.5 text-danger" aria-hidden="true" />
                   You owe
                 </div>
-                <div className="mt-2 tabular font-mono text-3xl font-bold text-danger sm:text-4xl text-balance">
+                <div className="mt-2 tabular font-mono text-2xl font-bold text-danger text-balance sm:text-3xl lg:text-4xl">
                   {youOwe || formatCurrency(0, 'USD')}
                 </div>
                 <div className="mt-1 text-xs text-fg-dim">
@@ -144,7 +151,7 @@ export function PersonalDashboard() {
           )}
 
           {dash && dash.overdueBills.length > 0 && (
-            <section className="mb-6 rounded-2xl border border-danger/30 bg-danger/5 p-5">
+            <section className="mb-6 rounded-2xl border border-danger/30 bg-danger/5 p-4 sm:p-5">
               <div className="flex items-start gap-3">
                 <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-danger" aria-hidden="true" />
                 <div className="flex-1 min-w-0">
@@ -153,15 +160,15 @@ export function PersonalDashboard() {
                   </h2>
                   <ul className="mt-2 space-y-1">
                     {dash.overdueBills.slice(0, 3).map((b: any) => (
-                      <li key={b.id} className="flex items-center justify-between gap-2 text-sm">
+                      <li key={b.id} className="flex flex-wrap items-center justify-between gap-2 text-sm">
                         <span className="truncate">{b.name}</span>
-                        <span className="shrink-0 tabular font-mono text-fg-muted">
-                          {formatCurrency(Number(b.amount), b.currency)} · due {new Date(b.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        <span className="shrink-0 tabular font-mono text-xs text-fg-muted">
+                          {formatCurrency(Number(b.amount), b.currency)}
                         </span>
                       </li>
                     ))}
                   </ul>
-                  <Link href="/app/bills" className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-danger hover:underline">
+                  <Link href="/app/bills" className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-danger">
                     Review all bills <ArrowUpRight className="h-3 w-3" aria-hidden="true" />
                   </Link>
                 </div>
@@ -196,7 +203,7 @@ export function PersonalDashboard() {
                         <Link
                           key={g.id}
                           href={`/app/groups/${g.id}`}
-                          className="glass group relative rounded-2xl p-4 transition-all duration-300 hover:border-neon-violet/40 hover:-translate-y-0.5"
+                          className="glass group relative rounded-2xl p-4 transition-all duration-300 active:scale-[0.98] hover:border-neon-violet/40 lg:hover:-translate-y-0.5"
                         >
                           {unreadCount > 0 && (
                             <span
@@ -219,9 +226,8 @@ export function PersonalDashboard() {
                             )}
                           </div>
                           <h3 className="mt-3 font-display font-semibold text-balance line-clamp-1">{g.name}</h3>
-                          <div className="mt-1 flex items-center justify-between text-xs text-fg-dim">
-                            <span>{balance?.member_count || 0} member{(balance?.member_count || 0) === 1 ? '' : 's'}</span>
-                            <span className="text-neon-cyan opacity-0 transition-opacity group-hover:opacity-100">Open →</span>
+                          <div className="mt-1 text-xs text-fg-dim">
+                            {balance?.member_count || 0} member{(balance?.member_count || 0) === 1 ? '' : 's'}
                           </div>
                         </Link>
                       )

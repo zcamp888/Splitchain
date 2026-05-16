@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { X, Loader2 } from 'lucide-react'
 import { useCreateExpense, useUpdateExpense } from '@/lib/hooks'
 import { useToast } from '@/components/Toaster'
+import { useBodyScrollLock } from '@/lib/useBodyScrollLock'
 import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 
 const CATEGORIES = ['food', 'travel', 'lodging', 'transport', 'entertainment', 'utilities', 'other']
@@ -50,6 +51,7 @@ export function AddExpenseDialog({
   const create = useCreateExpense(groupId)
   const update = useUpdateExpense(groupId)
   const { push } = useToast()
+  useBodyScrollLock(open)
 
   const isEdit = !!editId
 
@@ -186,29 +188,36 @@ export function AddExpenseDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-bg/80 p-0 backdrop-blur-sm sm:items-center sm:p-4"
+      className="modal-backdrop"
       role="dialog"
       aria-modal="true"
       aria-labelledby="add-expense-title"
       onClick={onClose}
     >
       <div
-        className="glass-strong max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-3xl p-6 shadow-2xl sm:rounded-3xl"
+        className="sheet-container flex flex-col"
         onClick={(e) => e.stopPropagation()}
         style={{ overscrollBehavior: 'contain' }}
       >
-        <div className="flex items-start justify-between">
-          <h2 id="add-expense-title" className="font-display text-xl font-bold tracking-tight">
+        <div className="sheet-grabber" aria-hidden="true" />
+
+        {/* Sticky header */}
+        <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-border/40 bg-bg-card/80 px-6 py-4 backdrop-blur-xl">
+          <h2 id="add-expense-title" className="font-display text-lg font-bold tracking-tight sm:text-xl">
             {isEdit ? 'Edit expense' : 'Add expense'}
           </h2>
-          <button onClick={onClose} className="text-fg-muted hover:text-fg" aria-label="Close dialog">
+          <button
+            onClick={onClose}
+            className="btn-icon -mr-2 text-fg-muted hover:text-fg"
+            aria-label="Close dialog"
+          >
             <X className="h-5 w-5" aria-hidden="true" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-5 space-y-4">
-          <div className="grid grid-cols-3 gap-3">
-            <div className="col-span-2">
+        <form onSubmit={handleSubmit} className="flex flex-1 flex-col">
+          <div className="flex-1 space-y-4 px-6 py-5">
+            <div>
               <label htmlFor="exp-desc" className="mb-1.5 block text-xs text-fg-muted">Description</label>
               <input
                 id="exp-desc"
@@ -221,6 +230,7 @@ export function AddExpenseDialog({
                 className="input-base"
               />
             </div>
+
             <div>
               <label htmlFor="exp-amount" className="mb-1.5 block text-xs text-fg-muted">Amount</label>
               <input
@@ -233,132 +243,145 @@ export function AddExpenseDialog({
                 onChange={(e) => setAmount(e.target.value)}
                 required
                 placeholder="0.00"
-                className="input-base tabular font-mono"
+                className="input-base tabular font-mono text-lg sm:text-base"
               />
             </div>
-          </div>
 
-          <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <div className="col-span-2 sm:col-span-1">
+                <label htmlFor="exp-paidby" className="mb-1.5 block text-xs text-fg-muted">Paid by</label>
+                <select
+                  id="exp-paidby"
+                  value={paidBy}
+                  onChange={(e) => setPaidBy(e.target.value)}
+                  className="input-base"
+                  style={{ backgroundColor: 'rgb(var(--bg-elev))', color: 'rgb(var(--fg))' }}
+                >
+                  {members.map((m: any) => {
+                    const wallet = m.profile?.wallet_address
+                    const label = m.profile?.display_name || m.profile?.email || (wallet ? `${wallet.slice(0, 6)}…${wallet.slice(-4)}` : 'Member')
+                    return (
+                      <option key={m.user_id} value={m.user_id}>
+                        {m.user_id === currentUserId ? `You` : label}
+                      </option>
+                    )
+                  })}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="exp-date" className="mb-1.5 block text-xs text-fg-muted">Date</label>
+                <input
+                  id="exp-date"
+                  type="date"
+                  value={expenseDate}
+                  onChange={(e) => setExpenseDate(e.target.value)}
+                  required
+                  className="input-base"
+                  style={{ colorScheme: 'dark' }}
+                />
+              </div>
+              <div>
+                <label htmlFor="exp-cat" className="mb-1.5 block text-xs text-fg-muted">Category</label>
+                <select
+                  id="exp-cat"
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  className="input-base capitalize"
+                  style={{ backgroundColor: 'rgb(var(--bg-elev))', color: 'rgb(var(--fg))' }}
+                >
+                  {CATEGORIES.map((c) => (
+                    <option key={c} value={c} className="capitalize">{c}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
             <div>
-              <label htmlFor="exp-paidby" className="mb-1.5 block text-xs text-fg-muted">Paid by</label>
-              <select
-                id="exp-paidby"
-                value={paidBy}
-                onChange={(e) => setPaidBy(e.target.value)}
-                className="input-base"
-                style={{ backgroundColor: 'rgb(var(--bg-elev))', color: 'rgb(var(--fg))' }}
-              >
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-xs text-fg-muted">Split between</span>
+                <div className="grid grid-cols-2 gap-1 rounded-lg border border-border-strong bg-bg-elev/40 p-0.5 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setSplitMode('equal')}
+                    className={`min-h-[36px] rounded-md px-3 font-medium transition-colors ${splitMode === 'equal' ? 'bg-bg-card' : 'text-fg-muted'}`}
+                  >
+                    Equal
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSplitMode('exact')}
+                    className={`min-h-[36px] rounded-md px-3 font-medium transition-colors ${splitMode === 'exact' ? 'bg-bg-card' : 'text-fg-muted'}`}
+                  >
+                    Exact
+                  </button>
+                </div>
+              </div>
+              <div className="space-y-1.5 rounded-xl border border-border-strong bg-bg-elev/40 p-2">
                 {members.map((m: any) => {
                   const wallet = m.profile?.wallet_address
                   const label = m.profile?.display_name || m.profile?.email || (wallet ? `${wallet.slice(0, 6)}…${wallet.slice(-4)}` : 'Member')
+                  const checked = includedMembers.has(m.user_id)
                   return (
-                    <option key={m.user_id} value={m.user_id}>
-                      {m.user_id === currentUserId ? `You` : label}
-                    </option>
+                    <div
+                      key={m.user_id}
+                      className="rounded-lg transition-colors hover:bg-bg-card/60"
+                    >
+                      <label
+                        htmlFor={`split-${m.user_id}`}
+                        className="flex min-h-[48px] cursor-pointer items-center gap-3 px-3 py-2"
+                      >
+                        <input
+                          id={`split-${m.user_id}`}
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleMember(m.user_id)}
+                          className="h-5 w-5 shrink-0 accent-neon-violet"
+                        />
+                        <span className="min-w-0 flex-1 truncate text-sm">{label}</span>
+                        {checked && splitMode === 'equal' && (
+                          <span className="tabular font-mono text-xs text-fg-muted">{equalShare.toFixed(2)}</span>
+                        )}
+                        {checked && splitMode === 'exact' && (
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            inputMode="decimal"
+                            value={exactSplits[m.user_id] || ''}
+                            onChange={(e) => setExactSplits((prev) => ({ ...prev, [m.user_id]: e.target.value }))}
+                            onClick={(e) => e.preventDefault()}
+                            placeholder="0.00"
+                            aria-label={`Exact share for ${label}`}
+                            className="w-24 rounded-lg border border-border-strong bg-bg-card px-2 py-2 text-right tabular font-mono text-sm"
+                            style={{ fontSize: '16px' }}
+                          />
+                        )}
+                      </label>
+                    </div>
                   )
                 })}
-              </select>
-            </div>
-            <div>
-              <label htmlFor="exp-date" className="mb-1.5 block text-xs text-fg-muted">Date</label>
-              <input
-                id="exp-date"
-                type="date"
-                value={expenseDate}
-                onChange={(e) => setExpenseDate(e.target.value)}
-                required
-                className="input-base"
-                style={{ colorScheme: 'dark' }}
-              />
-            </div>
-            <div>
-              <label htmlFor="exp-cat" className="mb-1.5 block text-xs text-fg-muted">Category</label>
-              <select
-                id="exp-cat"
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="input-base capitalize"
-                style={{ backgroundColor: 'rgb(var(--bg-elev))', color: 'rgb(var(--fg))' }}
-              >
-                {CATEGORIES.map((c) => (
-                  <option key={c} value={c} className="capitalize">{c}</option>
-                ))}
-              </select>
+              </div>
+              {splitMode === 'exact' && numericAmount > 0 && (
+                <div className={`mt-2 text-right text-xs tabular font-mono ${Math.abs(exactTotal - numericAmount) < 0.01 ? 'text-success' : 'text-danger'}`}>
+                  {exactTotal.toFixed(2)} / {numericAmount.toFixed(2)}
+                </div>
+              )}
             </div>
           </div>
 
-          <div>
-            <div className="mb-2 flex items-center justify-between">
-              <span className="text-xs text-fg-muted">Split between</span>
-              <div className="grid grid-cols-2 gap-1 rounded-lg border border-border-strong bg-bg-elev/40 p-0.5 text-xs">
-                <button
-                  type="button"
-                  onClick={() => setSplitMode('equal')}
-                  className={`rounded-md px-2.5 py-1 font-medium transition-colors ${splitMode === 'equal' ? 'bg-bg-card' : 'text-fg-muted hover:text-fg'}`}
-                >
-                  Equal
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSplitMode('exact')}
-                  className={`rounded-md px-2.5 py-1 font-medium transition-colors ${splitMode === 'exact' ? 'bg-bg-card' : 'text-fg-muted hover:text-fg'}`}
-                >
-                  Exact
-                </button>
-              </div>
-            </div>
-            <div className="space-y-1.5 rounded-xl border border-border-strong bg-bg-elev/40 p-2">
-              {members.map((m: any) => {
-                const wallet = m.profile?.wallet_address
-                const label = m.profile?.display_name || m.profile?.email || (wallet ? `${wallet.slice(0, 6)}…${wallet.slice(-4)}` : 'Member')
-                const checked = includedMembers.has(m.user_id)
-                return (
-                  <label
-                    key={m.user_id}
-                    htmlFor={`split-${m.user_id}`}
-                    className="flex cursor-pointer items-center gap-3 rounded-lg px-2.5 py-2 transition-colors hover:bg-bg-card/60"
-                  >
-                    <input
-                      id={`split-${m.user_id}`}
-                      type="checkbox"
-                      checked={checked}
-                      onChange={() => toggleMember(m.user_id)}
-                      className="h-4 w-4 shrink-0 accent-neon-violet"
-                    />
-                    <span className="min-w-0 flex-1 truncate text-sm">{label}</span>
-                    {checked && splitMode === 'equal' && (
-                      <span className="tabular font-mono text-xs text-fg-muted">{equalShare.toFixed(2)}</span>
-                    )}
-                    {checked && splitMode === 'exact' && (
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        inputMode="decimal"
-                        value={exactSplits[m.user_id] || ''}
-                        onChange={(e) => setExactSplits((prev) => ({ ...prev, [m.user_id]: e.target.value }))}
-                        placeholder="0.00"
-                        aria-label={`Exact share for ${label}`}
-                        className="w-24 rounded-lg border border-border-strong bg-bg-card px-2 py-1 text-right tabular font-mono text-xs"
-                      />
-                    )}
-                  </label>
-                )
-              })}
-            </div>
-            {splitMode === 'exact' && numericAmount > 0 && (
-              <div className={`mt-2 text-right text-xs tabular font-mono ${Math.abs(exactTotal - numericAmount) < 0.01 ? 'text-success' : 'text-danger'}`}>
-                {exactTotal.toFixed(2)} / {numericAmount.toFixed(2)}
-              </div>
-            )}
-          </div>
-
-          <div className="flex justify-end gap-2 pt-2">
-            <button type="button" onClick={onClose} className="btn-ghost">Cancel</button>
-            <button type="submit" disabled={pending} className="btn-primary">
+          {/* Sticky bottom action bar */}
+          <div
+            className="sticky bottom-0 flex gap-2 border-t border-border/40 bg-bg-card/80 px-6 py-4 backdrop-blur-xl"
+            style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+          >
+            <button type="button" onClick={onClose} className="btn-ghost flex-1">Cancel</button>
+            <button type="submit" disabled={pending} className="btn-primary flex-1">
               {pending ? (
-                <><Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />Saving…</>
-              ) : isEdit ? 'Save changes' : 'Add expense'}
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                  Saving…
+                </>
+              ) : isEdit ? 'Save' : 'Add'}
             </button>
           </div>
         </form>

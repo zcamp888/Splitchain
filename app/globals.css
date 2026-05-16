@@ -17,11 +17,33 @@
     --neon-lime: 163 230 53;
     --danger: 248 113 113;
     --success: 74 222 128;
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-top: env(safe-area-inset-top, 0px);
   }
 
   * { @apply border-border; }
-  html { scroll-behavior: smooth; }
-  body { font-feature-settings: 'cv02', 'cv03', 'cv11'; }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+  }
+
+  html.no-scroll {
+    overflow: hidden;
+    touch-action: none;
+  }
+
+  body {
+    font-feature-settings: 'cv02', 'cv03', 'cv11';
+    overscroll-behavior-y: contain;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  button, [role="button"], a {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
 
   ::selection {
     background: rgb(var(--neon-violet) / 0.4);
@@ -33,6 +55,18 @@
   }
 
   .tabular { font-variant-numeric: tabular-nums; }
+
+  /* Remove iOS input rounded corners */
+  input, textarea, select {
+    -webkit-appearance: none;
+    appearance: none;
+    border-radius: 0;
+  }
+
+  /* Reset for our styled inputs */
+  .input-base {
+    -webkit-appearance: none;
+  }
 }
 
 @layer components {
@@ -43,13 +77,53 @@
     @apply bg-bg-card/80 backdrop-blur-2xl border border-border-strong/60;
   }
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-neon-violet to-neon-cyan px-5 py-2.5 font-medium text-bg shadow-lg shadow-neon-violet/20 transition-[transform,box-shadow] duration-200 hover:scale-[1.02] hover:shadow-neon-violet/40 active:scale-[0.98] disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-neon-violet to-neon-cyan px-5 py-2.5 font-medium text-bg shadow-lg shadow-neon-violet/20 transition-[transform,box-shadow] duration-200 hover:scale-[1.02] hover:shadow-neon-violet/40 active:scale-[0.98] disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed min-h-[44px];
   }
   .btn-ghost {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-border-strong bg-bg-elev/60 px-5 py-2.5 font-medium text-fg transition-[background-color,border-color] duration-200 hover:bg-bg-elev hover:border-neon-violet/40 active:scale-[0.98];
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-border-strong bg-bg-elev/60 px-5 py-2.5 font-medium text-fg transition-[background-color,border-color] duration-200 hover:bg-bg-elev hover:border-neon-violet/40 active:scale-[0.98] min-h-[44px];
   }
   .input-base {
-    @apply w-full rounded-xl border border-border-strong bg-bg-elev/60 px-4 py-2.5 text-fg placeholder:text-fg-dim transition-colors focus:border-neon-violet/60 focus:bg-bg-elev;
+    @apply w-full rounded-xl border border-border-strong bg-bg-elev/60 px-4 py-3 text-base text-fg placeholder:text-fg-dim transition-colors focus:border-neon-violet/60 focus:bg-bg-elev min-h-[44px];
+    font-size: 16px; /* prevents iOS zoom on focus */
+  }
+  @screen sm {
+    .input-base {
+      @apply py-2.5 text-sm;
+      font-size: 0.875rem;
+    }
+  }
+
+  /* Bottom sheet grabber */
+  .sheet-grabber {
+    @apply mx-auto mb-2 h-1 w-10 shrink-0 rounded-full bg-border-strong/80 sm:hidden;
+  }
+
+  /* Bottom sheet container — mobile bottom, desktop center */
+  .sheet-container {
+    @apply glass-strong w-full max-w-md overflow-y-auto rounded-t-3xl shadow-2xl sm:max-h-[92vh] sm:rounded-3xl;
+    max-height: 92vh;
+    padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
+  }
+
+  /* Modal backdrop wrapper */
+  .modal-backdrop {
+    @apply fixed inset-0 z-50 flex items-end justify-center bg-bg/80 p-0 backdrop-blur-sm sm:items-center sm:p-4;
+  }
+
+  /* Touch-friendly icon button */
+  .btn-icon {
+    @apply inline-flex h-11 w-11 items-center justify-center rounded-xl transition-colors active:scale-95;
+  }
+
+  /* Safe area helpers */
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .safe-top {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+  .mb-safe {
+    margin-bottom: env(safe-area-inset-bottom, 0px);
   }
 
   @media (prefers-reduced-motion: reduce) {
