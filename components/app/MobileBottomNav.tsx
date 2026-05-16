@@ -21,10 +21,10 @@ export function MobileBottomNav() {
   return (
     <nav
       aria-label="Primary navigation"
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-bg-elev/95 backdrop-blur-xl lg:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-bg-elev/95 backdrop-blur-xl md:hidden"
       style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
     >
-      <ul className="mx-auto grid max-w-md grid-cols-5 px-2 pt-1.5 pb-1.5">
+      <ul className="mx-auto grid max-w-md grid-cols-5 px-2 pt-2 pb-2">
         {tabs.map(({ href, label, icon: Icon, match }) => {
           const active = match(pathname)
           const showBadge = label === 'Activity' && totalUnread > 0
@@ -34,16 +34,17 @@ export function MobileBottomNav() {
                 href={href}
                 aria-label={label}
                 aria-current={active ? 'page' : undefined}
-                className={`group relative flex flex-1 flex-col items-center justify-center gap-0.5 rounded-xl py-1.5 transition-colors ${
+                className={`group relative flex flex-1 flex-col items-center justify-center gap-1 rounded-xl py-2 transition-colors ${
                   active ? 'text-neon-violet' : 'text-fg-muted active:bg-bg-card/60'
                 }`}
+                style={{ minHeight: '56px' }}
               >
                 <span
-                  className={`relative flex h-7 w-12 items-center justify-center rounded-full transition-all ${
+                  className={`relative flex h-8 w-14 items-center justify-center rounded-full transition-all ${
                     active ? 'bg-neon-violet/15' : ''
                   }`}
                 >
-                  <Icon className="h-[18px] w-[18px]" aria-hidden="true" strokeWidth={active ? 2.4 : 2} />
+                  <Icon className="h-5 w-5" aria-hidden="true" strokeWidth={active ? 2.4 : 2} />
                   {showBadge && (
                     <span
                       aria-hidden="true"
@@ -53,7 +54,7 @@ export function MobileBottomNav() {
                     </span>
                   )}
                 </span>
-                <span className={`text-[10px] font-medium leading-none ${active ? '' : 'text-fg-dim'}`}>
+                <span className={`text-[11px] font-medium leading-none ${active ? '' : 'text-fg-dim'}`}>
                   {label}
                 </span>
               </Link>
