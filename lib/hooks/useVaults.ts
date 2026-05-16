@@ -35,8 +35,10 @@ export function useGroupVaults(groupId: string | undefined) {
   useEffect(() => {
     if (!groupId) return
     const supabase = createSupabaseBrowserClient()
+    // Unique channel name per mount prevents StrictMode double-invocation
+    // from re-attaching listeners to an already-subscribed channel.
     const channel = supabase
-      .channel(`vaults:${groupId}`)
+      .channel(`vaults:${groupId}:${Math.random().toString(36).slice(2)}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'vaults', filter: `group_id=eq.${groupId}` },

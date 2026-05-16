@@ -133,8 +133,10 @@ export function useGroupDetail(groupId: string | undefined) {
   useEffect(() => {
     if (!groupId) return
     const supabase = createSupabaseBrowserClient()
+    // Unique channel name per mount prevents StrictMode double-invocation
+    // from attaching `.on()` listeners to an already-subscribed channel.
     const channel = supabase
-      .channel(`group:${groupId}`)
+      .channel(`group:${groupId}:${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'expenses', filter: `group_id=eq.${groupId}` }, () =>
         qc.invalidateQueries({ queryKey: ['group', groupId, 'expenses'] })
       )
