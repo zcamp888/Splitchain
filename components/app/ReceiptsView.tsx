@@ -10,11 +10,11 @@ import { ReceiptToExpenseDialog } from '@/components/app/ReceiptToExpenseDialog'
 function friendlyError(raw: string | null | undefined): { kind: 'quota' | 'config' | 'parse' | 'other'; message: string } {
   if (!raw) return { kind: 'other', message: 'Could not parse this receipt.' }
   const lower = raw.toLowerCase()
-  if (lower.includes('quota') || lower.includes('429') || lower.includes('rate limit') || lower.includes('resource_exhausted')) {
-    return { kind: 'quota', message: 'Gemini rate limit hit. Wait a minute and retry — free tier is 15 requests/min.' }
+  if (lower.includes('quota') || lower.includes('429') || lower.includes('rate limit') || lower.includes('resource_exhausted') || lower.includes('too many requests')) {
+    return { kind: 'quota', message: 'Groq rate limit hit. Wait a few seconds and retry — free tier is 30 requests/min.' }
   }
-  if (lower.includes('not configured') || lower.includes('api_key') || lower.includes('api key') || lower.includes('gemini_api_key')) {
-    return { kind: 'config', message: 'Gemini API key not configured. Get one free at aistudio.google.com.' }
+  if (lower.includes('not configured') || lower.includes('api_key') || lower.includes('api key') || lower.includes('groq_api_key') || lower.includes('invalid_api_key')) {
+    return { kind: 'config', message: 'Groq API key not configured or invalid. Get one free at console.groq.com.' }
   }
   if (lower.includes('not a receipt') || lower.includes('could not extract')) {
     return { kind: 'parse', message: 'Image doesn\u2019t look like a receipt, or text is unreadable.' }
@@ -39,7 +39,7 @@ export function ReceiptsView() {
       try {
         const r = await upload.mutateAsync(file)
         if (r.ocr_status === 'success') {
-          push({ kind: 'success', message: 'Receipt scanned with Gemini ✨' })
+          push({ kind: 'success', message: 'Receipt scanned ✨' })
         } else {
           const f = friendlyError(r.error_message)
           push({ kind: f.kind === 'quota' || f.kind === 'config' ? 'error' : 'info', message: f.message })
@@ -76,7 +76,7 @@ export function ReceiptsView() {
     <div>
       <header className="mb-8">
         <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">Receipts</h1>
-        <p className="mt-1 text-sm text-fg-muted">Upload an image &mdash; Gemini reads it, then split it with one click.</p>
+        <p className="mt-1 text-sm text-fg-muted">Upload an image &mdash; Llama Vision reads it, then split it with one click.</p>
       </header>
 
       <div

@@ -39,13 +39,13 @@ openssl rand -hex 32
 
 Used for ENS resolution and on-chain reads.
 
-## 5. Google Gemini (for receipt OCR) — FREE TIER
+## 5. Groq (for receipt OCR) — FREE, NO CREDIT CARD
 
-1. Go to [aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey)
-2. Click **"Create API key"** — no credit card required
-3. Copy the key → `GEMINI_API_KEY`
+1. Go to [console.groq.com/keys](https://console.groq.com/keys)
+2. Sign in with Google (no credit card required)
+3. Click **"Create API Key"** → copy → `GROQ_API_KEY`
 
-**Free tier:** 15 requests/minute, 1500/day. Uses `gemini-1.5-flash` with vision.
+**Free tier:** 30 requests/min, **14,400/day**. Uses `llama-3.2-90b-vision-preview` for receipt parsing — fast and accurate.
 
 ## 6. Group Vaults — deploy contracts (optional, for Web3 escrow features)
 
@@ -92,11 +92,11 @@ npm run dev
 - ✅ Expenses with equal/exact splits
 - ✅ Balance engine + minimum-transfer settlement suggestions
 - ✅ Shareable invite links + ENS / wallet / email direct invites
-- ✅ Gemini receipt OCR (free tier)
+- ✅ Groq Llama Vision receipt OCR (free, 14,400/day)
 - ✅ Personal bills tracker (recurring, due dates, paid toggle)
 - ✅ On-chain settlements (ETH/USDC on Base, Polygon, Optimism, Mainnet)
 - ✅ Group settings, expense edit, member removal
 - ✅ Recurring expenses
 - ✅ Activity feed + push notifications
 - ✅ CSV export
-- 🚧 **On-chain group vaults** (contracts deployed, frontend coming Phase 3)
+- ✅ **On-chain group vaults**
