@@ -45,7 +45,9 @@ Used for ENS resolution and on-chain reads.
 2. Add $5 minimum credit (Billing → Add credits) — ~2,500 receipts
 3. Click **Create Key** → copy → `ANTHROPIC_API_KEY`
 
-Uses **Claude 3.5 Haiku** — ~$0.002 per receipt, fast and highly accurate at structured JSON extraction.
+Uses **Claude Haiku 4.5** — ~$1/MTok input, fast and highly accurate at structured JSON extraction. Falls back to **Claude Sonnet 4.5** if Haiku is unavailable on your account.
+
+> Note: older Claude 3.x models (including `claude-3-5-haiku-latest`) were retired in April 2026 and now return 404. Always use Claude 4.x model identifiers.
 
 ## 6. Group Vaults — deploy contracts (optional, for Web3 escrow features)
 
@@ -92,7 +94,7 @@ npm run dev
 - ✅ Expenses with equal/exact splits
 - ✅ Balance engine + minimum-transfer settlement suggestions
 - ✅ Shareable invite links + ENS / wallet / email direct invites
-- ✅ Claude 3.5 Haiku receipt OCR
+- ✅ Claude Haiku 4.5 receipt OCR
 - ✅ Personal bills tracker (recurring, due dates, paid toggle)
 - ✅ On-chain settlements (ETH/USDC on Base, Polygon, Optimism, Mainnet)
 - ✅ Group settings, expense edit, member removal
