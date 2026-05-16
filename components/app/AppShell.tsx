@@ -33,9 +33,9 @@ export function AppShell({ user, children }: { user: User; children: React.React
   }
 
   return (
-    <div className="flex min-h-[100dvh]">
-      {/* Desktop sidebar — hidden below lg breakpoint */}
-      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-border/60 bg-bg-elev/40 backdrop-blur-xl lg:flex">
+    <div className="flex min-h-[100dvh] bg-bg">
+      {/* Desktop sidebar — hidden below md (768px) */}
+      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-border/60 bg-bg-elev/40 backdrop-blur-xl md:flex">
         <div className="flex items-center justify-between px-6 py-6">
           <Link href="/" className="flex items-center gap-2 font-display text-lg font-bold tracking-tight">
             <span className="inline-block h-2 w-2 rounded-full bg-neon-lime shadow-[0_0_12px_rgb(163,230,53)]" aria-hidden="true" />
@@ -79,23 +79,26 @@ export function AppShell({ user, children }: { user: User; children: React.React
         </div>
       </aside>
 
-      {/* Mobile top bar — visible below lg */}
-      <header
-        className="sticky top-0 z-30 flex items-center justify-between border-b border-border/50 bg-bg-elev/80 px-4 py-3 backdrop-blur-xl lg:hidden"
-        style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top, 0px))' }}
-      >
-        <Link href="/app" className="flex items-center gap-2 font-display font-bold">
-          <span className="inline-block h-2 w-2 rounded-full bg-neon-lime shadow-[0_0_12px_rgb(163,230,53)]" aria-hidden="true" />
-          SplitChain
-        </Link>
-        <NotificationBell />
-      </header>
+      {/* Main column — contains mobile header + content */}
+      <div className="flex min-w-0 flex-1 flex-col">
+        {/* Mobile top bar — visible below md */}
+        <header
+          className="sticky top-0 z-30 flex items-center justify-between border-b border-border/50 bg-bg-elev/85 px-5 py-3 backdrop-blur-xl md:hidden"
+          style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top, 0px))' }}
+        >
+          <Link href="/app" className="flex items-center gap-2 font-display text-lg font-bold tracking-tight">
+            <span className="inline-block h-2.5 w-2.5 rounded-full bg-neon-lime shadow-[0_0_14px_rgb(163,230,53)]" aria-hidden="true" />
+            SplitChain
+          </Link>
+          <NotificationBell />
+        </header>
 
-      <main className="min-w-0 flex-1">
-        <div className="mx-auto max-w-6xl px-4 pt-4 pb-28 sm:px-6 sm:pt-6 lg:px-10 lg:pt-10 lg:pb-10">
-          {children}
-        </div>
-      </main>
+        <main className="flex-1">
+          <div className="mx-auto w-full max-w-6xl px-4 pt-5 pb-28 sm:px-6 md:px-8 md:pt-8 md:pb-10 lg:px-10">
+            {children}
+          </div>
+        </main>
+      </div>
 
       <MobileBottomNav />
     </div>
