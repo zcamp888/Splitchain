@@ -39,13 +39,13 @@ openssl rand -hex 32
 
 Used for ENS resolution and on-chain reads.
 
-## 5. Groq (for receipt OCR) — FREE, NO CREDIT CARD
+## 5. Claude (for receipt OCR)
 
-1. Go to [console.groq.com/keys](https://console.groq.com/keys)
-2. Sign in with Google (no credit card required)
-3. Click **"Create API Key"** → copy → `GROQ_API_KEY`
+1. Go to [console.anthropic.com/settings/keys](https://console.anthropic.com/settings/keys)
+2. Add $5 minimum credit (Billing → Add credits) — ~2,500 receipts
+3. Click **Create Key** → copy → `ANTHROPIC_API_KEY`
 
-**Free tier:** 30 requests/min, **14,400/day**. Uses `llama-3.2-90b-vision-preview` for receipt parsing — fast and accurate.
+Uses **Claude 3.5 Haiku** — ~$0.002 per receipt, fast and highly accurate at structured JSON extraction.
 
 ## 6. Group Vaults — deploy contracts (optional, for Web3 escrow features)
 
@@ -92,7 +92,7 @@ npm run dev
 - ✅ Expenses with equal/exact splits
 - ✅ Balance engine + minimum-transfer settlement suggestions
 - ✅ Shareable invite links + ENS / wallet / email direct invites
-- ✅ Groq Llama Vision receipt OCR (free, 14,400/day)
+- ✅ Claude 3.5 Haiku receipt OCR
 - ✅ Personal bills tracker (recurring, due dates, paid toggle)
 - ✅ On-chain settlements (ETH/USDC on Base, Polygon, Optimism, Mainnet)
 - ✅ Group settings, expense edit, member removal
