@@ -1,8 +1,8 @@
 // @integration: supabase
-// @integration: groq
+// @integration: anthropic
 import { NextResponse } from 'next/server'
 import { createSupabaseServerClient, createSupabaseServiceClient } from '@/lib/supabase/server'
-import Groq from 'groq-sdk'
+import Anthropic from '@anthropic-ai/sdk'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -26,10 +26,7 @@ Rules:
 - If image is not a receipt or unreadable, return exactly: {"error": "not a receipt"}.
 - Output raw JSON only.`
 
-const MODEL_CANDIDATES = [
-  'llama-3.2-90b-vision-preview',
-  'llama-3.2-11b-vision-preview',
-]
+const MODEL = 'claude-3-5-haiku-20241022'
 
 function stripCodeFences(s: string): string {
   let trimmed = s.trim()
@@ -39,48 +36,12 @@ function stripCodeFences(s: string): string {
   return trimmed.trim()
 }
 
-async function runGroq(apiKey: string, mimeType: string, base64: string) {
-  const groq = new Groq({ apiKey })
-  let lastError: Error | null = null
-
-  for (const modelName of MODEL_CANDIDATES) {
-    try {
-      const completion = await groq.chat.completions.create({
-        model: modelName,
-        temperature: 0.1,
-        max_tokens: 2048,
-        response_format: { type: 'json_object' },
-        messages: [
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: SYSTEM_PROMPT },
-              {
-                type: 'image_url',
-                image_url: { url: `data:${mimeType};base64,${base64}` },
-              },
-            ],
-          },
-        ],
-      })
-
-      const text = completion.choices[0]?.message?.content || ''
-      return { text, modelUsed: modelName }
-    } catch (e: any) {
-      lastError = e instanceof Error ? e : new Error(String(e))
-      const msg = lastError.message.toLowerCase()
-      if (
-        !msg.includes('decommissioned') &&
-        !msg.includes('not found') &&
-        !msg.includes('does not exist') &&
-        !msg.includes('model_not_found')
-      ) {
-        throw lastError
-      }
-    }
-  }
-
-  throw lastError || new Error('All Groq vision models failed')
+function mimeForClaude(mime: string): 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp' {
+  const m = mime.toLowerCase()
+  if (m.includes('png')) return 'image/png'
+  if (m.includes('gif')) return 'image/gif'
+  if (m.includes('webp')) return 'image/webp'
+  return 'image/jpeg'
 }
 
 export async function POST(req: Request) {
@@ -126,17 +87,43 @@ export async function POST(req: Request) {
     let errorMessage: string | null = null
 
     try {
-      if (!process.env.GROQ_API_KEY) {
-        throw new Error('GROQ_API_KEY not configured — get one free at console.groq.com')
+      if (!process.env.ANTHROPIC_API_KEY) {
+        throw new Error('ANTHROPIC_API_KEY not configured — get one at console.anthropic.com')
       }
 
-      const { text } = await runGroq(
-        process.env.GROQ_API_KEY,
-        file.type,
-        buffer.toString('base64')
-      )
+      const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
-      const clean = stripCodeFences(text)
+      const response = await anthropic.messages.create({
+        model: MODEL,
+        max_tokens: 2048,
+        temperature: 0,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'image',
+                source: {
+                  type: 'base64',
+                  media_type: mimeForClaude(file.type),
+                  data: buffer.toString('base64'),
+                },
+              },
+              {
+                type: 'text',
+                text: SYSTEM_PROMPT,
+              },
+            ],
+          },
+        ],
+      })
+
+      const textBlock = response.content.find((b) => b.type === 'text')
+      if (!textBlock || textBlock.type !== 'text') {
+        throw new Error('Claude returned no text content')
+      }
+
+      const clean = stripCodeFences(textBlock.text)
       parsed = JSON.parse(clean)
 
       if (parsed.error) {
@@ -149,7 +136,7 @@ export async function POST(req: Request) {
         ocrStatus = 'success'
       }
     } catch (e) {
-      errorMessage = e instanceof Error ? e.message : 'Groq OCR failed'
+      errorMessage = e instanceof Error ? e.message : 'Claude OCR failed'
       ocrStatus = 'failed'
     }
 
