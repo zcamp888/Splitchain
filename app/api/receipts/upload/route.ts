@@ -1,8 +1,8 @@
 // @integration: supabase
-// @integration: groq
+// @integration: anthropic
 import { NextResponse } from 'next/server'
 import { createSupabaseServerClient, createSupabaseServiceClient } from '@/lib/supabase/server'
-import Groq from 'groq-sdk'
+import Anthropic from '@anthropic-ai/sdk'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -26,9 +26,11 @@ Rules:
 - If image is not a receipt or unreadable, return exactly: {"error": "not a receipt"}.
 - Output raw JSON only.`
 
+// Current Claude 4.x models — older 3.x models were retired April 2026.
+// Haiku 4.5 is the fast/cheap default; Sonnet 4.5 is the smarter fallback.
 const MODEL_CANDIDATES = [
-  'llama-3.2-90b-vision-preview',
-  'llama-3.2-11b-vision-preview',
+  'claude-haiku-4-5',
+  'claude-sonnet-4-5',
 ]
 
 function stripCodeFences(s: string): string {
@@ -39,48 +41,66 @@ function stripCodeFences(s: string): string {
   return trimmed.trim()
 }
 
-async function runGroq(apiKey: string, mimeType: string, base64: string) {
-  const groq = new Groq({ apiKey })
-  let lastError: Error | null = null
+function mimeForClaude(mime: string): 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp' {
+  const m = mime.toLowerCase()
+  if (m.includes('png')) return 'image/png'
+  if (m.includes('gif')) return 'image/gif'
+  if (m.includes('webp')) return 'image/webp'
+  return 'image/jpeg'
+}
 
-  for (const modelName of MODEL_CANDIDATES) {
+async function callClaudeWithFallback(
+  anthropic: Anthropic,
+  imageBase64: string,
+  mediaType: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp'
+): Promise<{ text: string; modelUsed: string }> {
+  let lastErr: any = null
+  const triedModels: string[] = []
+
+  for (const model of MODEL_CANDIDATES) {
     try {
-      const completion = await groq.chat.completions.create({
-        model: modelName,
-        temperature: 0.1,
+      triedModels.push(model)
+      const response = await anthropic.messages.create({
+        model,
         max_tokens: 2048,
-        response_format: { type: 'json_object' },
+        temperature: 0,
         messages: [
           {
             role: 'user',
             content: [
-              { type: 'text', text: SYSTEM_PROMPT },
               {
-                type: 'image_url',
-                image_url: { url: `data:${mimeType};base64,${base64}` },
+                type: 'image',
+                source: { type: 'base64', media_type: mediaType, data: imageBase64 },
               },
+              { type: 'text', text: SYSTEM_PROMPT },
             ],
           },
         ],
       })
-
-      const text = completion.choices[0]?.message?.content || ''
-      return { text, modelUsed: modelName }
-    } catch (e: any) {
-      lastError = e instanceof Error ? e : new Error(String(e))
-      const msg = lastError.message.toLowerCase()
-      if (
-        !msg.includes('decommissioned') &&
-        !msg.includes('not found') &&
-        !msg.includes('does not exist') &&
-        !msg.includes('model_not_found')
-      ) {
-        throw lastError
+      const textBlock = response.content.find((b) => b.type === 'text')
+      if (!textBlock || textBlock.type !== 'text') {
+        throw new Error('Claude returned no text content')
       }
+      return { text: textBlock.text, modelUsed: model }
+    } catch (e: any) {
+      lastErr = e
+      const msg = e?.message || ''
+      const status = e?.status
+      // 404 = model not available on this account → try next
+      // Other errors (auth, quota, rate-limit) → bubble up immediately
+      if (status === 404 || /not_found/i.test(msg)) {
+        continue
+      }
+      throw e
     }
   }
 
-  throw lastError || new Error('All Groq vision models failed')
+  const err = new Error(
+    `No Claude model available on your account. Tried: ${triedModels.join(', ')}. ` +
+    `Check console.anthropic.com/settings/billing — make sure your workspace has credit and model access.`
+  )
+  ;(err as any).cause = lastErr
+  throw err
 }
 
 export async function POST(req: Request) {
@@ -126,14 +146,15 @@ export async function POST(req: Request) {
     let errorMessage: string | null = null
 
     try {
-      if (!process.env.GROQ_API_KEY) {
-        throw new Error('GROQ_API_KEY not configured — get one free at console.groq.com')
+      if (!process.env.ANTHROPIC_API_KEY) {
+        throw new Error('ANTHROPIC_API_KEY not configured — get one at console.anthropic.com')
       }
 
-      const { text } = await runGroq(
-        process.env.GROQ_API_KEY,
-        file.type,
-        buffer.toString('base64')
+      const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+      const { text } = await callClaudeWithFallback(
+        anthropic,
+        buffer.toString('base64'),
+        mimeForClaude(file.type)
       )
 
       const clean = stripCodeFences(text)
@@ -148,8 +169,8 @@ export async function POST(req: Request) {
       } else {
         ocrStatus = 'success'
       }
-    } catch (e) {
-      errorMessage = e instanceof Error ? e.message : 'Groq OCR failed'
+    } catch (e: any) {
+      errorMessage = e?.message || 'Claude OCR failed'
       ocrStatus = 'failed'
     }
 
