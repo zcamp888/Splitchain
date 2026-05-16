@@ -26,11 +26,11 @@ Rules:
 - If image is not a receipt or unreadable, return exactly: {"error": "not a receipt"}.
 - Output raw JSON only.`
 
-// Fallback chain — try latest alias first, then known stable snapshots.
+// Current Claude 4.x models — older 3.x models were retired April 2026.
+// Haiku 4.5 is the fast/cheap default; Sonnet 4.5 is the smarter fallback.
 const MODEL_CANDIDATES = [
-  'claude-3-5-haiku-latest',
-  'claude-3-5-sonnet-latest',
-  'claude-3-haiku-20240307',
+  'claude-haiku-4-5',
+  'claude-sonnet-4-5',
 ]
 
 function stripCodeFences(s: string): string {
@@ -55,8 +55,11 @@ async function callClaudeWithFallback(
   mediaType: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp'
 ): Promise<{ text: string; modelUsed: string }> {
   let lastErr: any = null
+  const triedModels: string[] = []
+
   for (const model of MODEL_CANDIDATES) {
     try {
+      triedModels.push(model)
       const response = await anthropic.messages.create({
         model,
         max_tokens: 2048,
@@ -82,14 +85,22 @@ async function callClaudeWithFallback(
     } catch (e: any) {
       lastErr = e
       const msg = e?.message || ''
-      // Only fall through on model-not-found errors. Other errors (auth, quota) should bubble.
-      if (e?.status === 404 || /not_found/i.test(msg) || /model/i.test(msg)) {
+      const status = e?.status
+      // 404 = model not available on this account → try next
+      // Other errors (auth, quota, rate-limit) → bubble up immediately
+      if (status === 404 || /not_found/i.test(msg)) {
         continue
       }
       throw e
     }
   }
-  throw lastErr || new Error('All Claude models unavailable')
+
+  const err = new Error(
+    `No Claude model available on your account. Tried: ${triedModels.join(', ')}. ` +
+    `Check console.anthropic.com/settings/billing — make sure your workspace has credit and model access.`
+  )
+  ;(err as any).cause = lastErr
+  throw err
 }
 
 export async function POST(req: Request) {
