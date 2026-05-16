@@ -5,6 +5,7 @@
   "start_url": "/app",
   "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "orientation": "portrait",
   "background_color": "#0a0b14",
   "theme_color": "#0a0b14",
@@ -46,8 +47,8 @@
       "icons": [{ "src": "/icon", "sizes": "192x192" }]
     },
     {
-      "name": "Receipts",
-      "short_name": "Receipts",
+      "name": "Scan receipt",
+      "short_name": "Receipt",
       "description": "Scan a receipt",
       "url": "/app/receipts",
       "icons": [{ "src": "/icon", "sizes": "192x192" }]

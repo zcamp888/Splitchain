@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { WagmiProvider } from 'wagmi'
 import { wagmiConfig } from '@/lib/wagmi'
 import { ToastProvider } from '@/components/Toaster'
+import { InstallPrompt } from '@/components/InstallPrompt'
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [client] = useState(
@@ -18,7 +19,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={client}>
-        <ToastProvider>{children}</ToastProvider>
+        <ToastProvider>
+          {children}
+          <InstallPrompt />
+        </ToastProvider>
       </QueryClientProvider>
     </WagmiProvider>
   )

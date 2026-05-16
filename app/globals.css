@@ -17,8 +17,6 @@
     --neon-lime: 163 230 53;
     --danger: 248 113 113;
     --success: 74 222 128;
-    --safe-bottom: env(safe-area-inset-bottom, 0px);
-    --safe-top: env(safe-area-inset-top, 0px);
   }
 
   * { @apply border-border; }
@@ -27,6 +25,9 @@
     scroll-behavior: smooth;
     -webkit-tap-highlight-color: transparent;
     -webkit-touch-callout: none;
+    scroll-padding-bottom: 6rem;
+    /* Prevent overscroll bounce showing white on iOS */
+    background: rgb(var(--bg));
   }
 
   html.no-scroll {
@@ -38,6 +39,8 @@
     font-feature-settings: 'cv02', 'cv03', 'cv11';
     overscroll-behavior-y: contain;
     -webkit-font-smoothing: antialiased;
+    /* Use dynamic viewport so mobile chrome bars don't cut off content */
+    min-height: 100dvh;
   }
 
   button, [role="button"], a {
@@ -56,16 +59,22 @@
 
   .tabular { font-variant-numeric: tabular-nums; }
 
-  /* Remove iOS input rounded corners */
+  /* iOS form input reset */
   input, textarea, select {
     -webkit-appearance: none;
     appearance: none;
     border-radius: 0;
   }
 
-  /* Reset for our styled inputs */
-  .input-base {
-    -webkit-appearance: none;
+  input, textarea {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+
+  /* Smooth momentum scrolling on iOS for any explicit scroll container */
+  .scroll-y {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
   }
 }
 
@@ -81,6 +90,9 @@
   }
   .btn-ghost {
     @apply inline-flex items-center justify-center gap-2 rounded-xl border border-border-strong bg-bg-elev/60 px-5 py-2.5 font-medium text-fg transition-[background-color,border-color] duration-200 hover:bg-bg-elev hover:border-neon-violet/40 active:scale-[0.98] min-h-[44px];
+  }
+  .btn-icon {
+    @apply inline-flex h-11 w-11 items-center justify-center rounded-xl transition-colors active:scale-95;
   }
   .input-base {
     @apply w-full rounded-xl border border-border-strong bg-bg-elev/60 px-4 py-3 text-base text-fg placeholder:text-fg-dim transition-colors focus:border-neon-violet/60 focus:bg-bg-elev min-h-[44px];
@@ -98,21 +110,31 @@
     @apply mx-auto mb-2 h-1 w-10 shrink-0 rounded-full bg-border-strong/80 sm:hidden;
   }
 
-  /* Bottom sheet container — mobile bottom, desktop center */
+  /* Mobile-first sheet: full screen on phone, centered modal on desktop */
   .sheet-container {
-    @apply glass-strong w-full max-w-md overflow-y-auto rounded-t-3xl shadow-2xl sm:max-h-[92vh] sm:rounded-3xl;
-    max-height: 92vh;
+    @apply glass-strong flex w-full max-w-md flex-col overflow-y-auto rounded-t-3xl shadow-2xl sm:max-h-[92vh] sm:rounded-3xl;
+    height: 100dvh;
     padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+  @screen sm {
+    .sheet-container {
+      height: auto;
+    }
   }
 
-  /* Modal backdrop wrapper */
+  /* Compact sheet variant — only as tall as content */
+  .sheet-compact {
+    @apply glass-strong w-full max-w-md overflow-y-auto rounded-t-3xl shadow-2xl sm:max-h-[92vh] sm:rounded-3xl;
+    max-height: 90dvh;
+    padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+
   .modal-backdrop {
-    @apply fixed inset-0 z-50 flex items-end justify-center bg-bg/80 p-0 backdrop-blur-sm sm:items-center sm:p-4;
-  }
-
-  /* Touch-friendly icon button */
-  .btn-icon {
-    @apply inline-flex h-11 w-11 items-center justify-center rounded-xl transition-colors active:scale-95;
+    @apply fixed inset-0 z-50 flex items-end justify-center bg-bg/80 backdrop-blur-sm sm:items-center sm:p-4;
   }
 
   /* Safe area helpers */
@@ -122,8 +144,16 @@
   .safe-top {
     padding-top: env(safe-area-inset-top, 0px);
   }
-  .mb-safe {
-    margin-bottom: env(safe-area-inset-bottom, 0px);
+
+  /* Sticky sheet header — for full-screen mobile dialogs */
+  .sheet-header {
+    @apply sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-border/40 bg-bg-card/80 px-5 py-4 backdrop-blur-xl;
+  }
+
+  /* Sticky sheet footer — actions always reachable */
+  .sheet-footer {
+    @apply sticky bottom-0 z-10 flex gap-2 border-t border-border/40 bg-bg-card/80 px-5 py-4 backdrop-blur-xl;
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
   }
 
   @media (prefers-reduced-motion: reduce) {

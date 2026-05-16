@@ -195,28 +195,27 @@ export function AddExpenseDialog({
       onClick={onClose}
     >
       <div
-        className="sheet-container flex flex-col"
+        className="sheet-container"
         onClick={(e) => e.stopPropagation()}
-        style={{ overscrollBehavior: 'contain' }}
       >
         <div className="sheet-grabber" aria-hidden="true" />
 
-        {/* Sticky header */}
-        <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-border/40 bg-bg-card/80 px-6 py-4 backdrop-blur-xl">
-          <h2 id="add-expense-title" className="font-display text-lg font-bold tracking-tight sm:text-xl">
-            {isEdit ? 'Edit expense' : 'Add expense'}
-          </h2>
-          <button
-            onClick={onClose}
-            className="btn-icon -mr-2 text-fg-muted hover:text-fg"
-            aria-label="Close dialog"
-          >
-            <X className="h-5 w-5" aria-hidden="true" />
-          </button>
-        </div>
-
         <form onSubmit={handleSubmit} className="flex flex-1 flex-col">
-          <div className="flex-1 space-y-4 px-6 py-5">
+          <div className="sheet-header">
+            <h2 id="add-expense-title" className="font-display text-lg font-bold tracking-tight sm:text-xl">
+              {isEdit ? 'Edit expense' : 'Add expense'}
+            </h2>
+            <button
+              type="button"
+              onClick={onClose}
+              className="btn-icon -mr-2 text-fg-muted hover:text-fg"
+              aria-label="Close dialog"
+            >
+              <X className="h-5 w-5" aria-hidden="true" />
+            </button>
+          </div>
+
+          <div className="flex-1 space-y-5 px-5 py-5">
             <div>
               <label htmlFor="exp-desc" className="mb-1.5 block text-xs text-fg-muted">Description</label>
               <input
@@ -247,8 +246,8 @@ export function AddExpenseDialog({
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              <div className="col-span-2 sm:col-span-1">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
                 <label htmlFor="exp-paidby" className="mb-1.5 block text-xs text-fg-muted">Paid by</label>
                 <select
                   id="exp-paidby"
@@ -280,20 +279,21 @@ export function AddExpenseDialog({
                   style={{ colorScheme: 'dark' }}
                 />
               </div>
-              <div>
-                <label htmlFor="exp-cat" className="mb-1.5 block text-xs text-fg-muted">Category</label>
-                <select
-                  id="exp-cat"
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  className="input-base capitalize"
-                  style={{ backgroundColor: 'rgb(var(--bg-elev))', color: 'rgb(var(--fg))' }}
-                >
-                  {CATEGORIES.map((c) => (
-                    <option key={c} value={c} className="capitalize">{c}</option>
-                  ))}
-                </select>
-              </div>
+            </div>
+
+            <div>
+              <label htmlFor="exp-cat" className="mb-1.5 block text-xs text-fg-muted">Category</label>
+              <select
+                id="exp-cat"
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="input-base capitalize"
+                style={{ backgroundColor: 'rgb(var(--bg-elev))', color: 'rgb(var(--fg))' }}
+              >
+                {CATEGORIES.map((c) => (
+                  <option key={c} value={c} className="capitalize">{c}</option>
+                ))}
+              </select>
             </div>
 
             <div>
@@ -328,7 +328,7 @@ export function AddExpenseDialog({
                     >
                       <label
                         htmlFor={`split-${m.user_id}`}
-                        className="flex min-h-[48px] cursor-pointer items-center gap-3 px-3 py-2"
+                        className="flex min-h-[52px] cursor-pointer items-center gap-3 px-3 py-2"
                       >
                         <input
                           id={`split-${m.user_id}`}
@@ -369,11 +369,7 @@ export function AddExpenseDialog({
             </div>
           </div>
 
-          {/* Sticky bottom action bar */}
-          <div
-            className="sticky bottom-0 flex gap-2 border-t border-border/40 bg-bg-card/80 px-6 py-4 backdrop-blur-xl"
-            style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
-          >
+          <div className="sheet-footer">
             <button type="button" onClick={onClose} className="btn-ghost flex-1">Cancel</button>
             <button type="submit" disabled={pending} className="btn-primary flex-1">
               {pending ? (

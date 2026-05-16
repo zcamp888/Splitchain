@@ -12,13 +12,21 @@ export const metadata: Metadata = {
   title: 'SplitChain — Web3-native expense splitting',
   description: 'Split expenses with friends. Settle anywhere.',
   manifest: '/manifest.json',
+  applicationName: 'SplitChain',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
     title: 'SplitChain',
+    startupImage: ['/apple-icon'],
   },
   formatDetection: {
     telephone: false,
+    email: false,
+    address: false,
+  },
+  other: {
+    'mobile-web-app-capable': 'yes',
+    'apple-mobile-web-app-capable': 'yes',
   },
 }
 
@@ -27,7 +35,9 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 5,
+  userScalable: true,
   viewportFit: 'cover',
+  colorScheme: 'dark',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -37,7 +47,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       className={`${sora.variable} ${spaceGrotesk.variable} ${jetbrains.variable}`}
       style={{ colorScheme: 'dark' }}
     >
-      <body className="min-h-screen bg-bg text-fg antialiased">
+      <body className="bg-bg text-fg antialiased">
         <a
           href="#main"
           className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-neon-violet focus:px-4 focus:py-2 focus:text-bg"
