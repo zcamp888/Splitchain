@@ -26,7 +26,12 @@ Rules:
 - If image is not a receipt or unreadable, return exactly: {"error": "not a receipt"}.
 - Output raw JSON only.`
 
-const MODEL = 'claude-3-5-haiku-20241022'
+// Fallback chain — try latest alias first, then known stable snapshots.
+const MODEL_CANDIDATES = [
+  'claude-3-5-haiku-latest',
+  'claude-3-5-sonnet-latest',
+  'claude-3-haiku-20240307',
+]
 
 function stripCodeFences(s: string): string {
   let trimmed = s.trim()
@@ -42,6 +47,49 @@ function mimeForClaude(mime: string): 'image/jpeg' | 'image/png' | 'image/gif' |
   if (m.includes('gif')) return 'image/gif'
   if (m.includes('webp')) return 'image/webp'
   return 'image/jpeg'
+}
+
+async function callClaudeWithFallback(
+  anthropic: Anthropic,
+  imageBase64: string,
+  mediaType: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp'
+): Promise<{ text: string; modelUsed: string }> {
+  let lastErr: any = null
+  for (const model of MODEL_CANDIDATES) {
+    try {
+      const response = await anthropic.messages.create({
+        model,
+        max_tokens: 2048,
+        temperature: 0,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'image',
+                source: { type: 'base64', media_type: mediaType, data: imageBase64 },
+              },
+              { type: 'text', text: SYSTEM_PROMPT },
+            ],
+          },
+        ],
+      })
+      const textBlock = response.content.find((b) => b.type === 'text')
+      if (!textBlock || textBlock.type !== 'text') {
+        throw new Error('Claude returned no text content')
+      }
+      return { text: textBlock.text, modelUsed: model }
+    } catch (e: any) {
+      lastErr = e
+      const msg = e?.message || ''
+      // Only fall through on model-not-found errors. Other errors (auth, quota) should bubble.
+      if (e?.status === 404 || /not_found/i.test(msg) || /model/i.test(msg)) {
+        continue
+      }
+      throw e
+    }
+  }
+  throw lastErr || new Error('All Claude models unavailable')
 }
 
 export async function POST(req: Request) {
@@ -92,38 +140,13 @@ export async function POST(req: Request) {
       }
 
       const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+      const { text } = await callClaudeWithFallback(
+        anthropic,
+        buffer.toString('base64'),
+        mimeForClaude(file.type)
+      )
 
-      const response = await anthropic.messages.create({
-        model: MODEL,
-        max_tokens: 2048,
-        temperature: 0,
-        messages: [
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'image',
-                source: {
-                  type: 'base64',
-                  media_type: mimeForClaude(file.type),
-                  data: buffer.toString('base64'),
-                },
-              },
-              {
-                type: 'text',
-                text: SYSTEM_PROMPT,
-              },
-            ],
-          },
-        ],
-      })
-
-      const textBlock = response.content.find((b) => b.type === 'text')
-      if (!textBlock || textBlock.type !== 'text') {
-        throw new Error('Claude returned no text content')
-      }
-
-      const clean = stripCodeFences(textBlock.text)
+      const clean = stripCodeFences(text)
       parsed = JSON.parse(clean)
 
       if (parsed.error) {
@@ -135,8 +158,8 @@ export async function POST(req: Request) {
       } else {
         ocrStatus = 'success'
       }
-    } catch (e) {
-      errorMessage = e instanceof Error ? e.message : 'Claude OCR failed'
+    } catch (e: any) {
+      errorMessage = e?.message || 'Claude OCR failed'
       ocrStatus = 'failed'
     }
 
