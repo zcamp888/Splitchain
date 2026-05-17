@@ -1,8 +1,9 @@
 import Link from 'next/link'
-import { Bell, Receipt, LogOut, User, Wallet } from 'lucide-react'
+import { Bell, Receipt, User, Wallet, Sparkles } from 'lucide-react'
 import { redirect } from 'next/navigation'
 import { getServerUser } from '@/lib/supabase/server'
 import { NotificationSettings } from '@/components/app/NotificationSettings'
+import { NicknameSettings } from '@/components/app/NicknameSettings'
 import { SignOutButton } from '@/components/app/SignOutButton'
 
 export const dynamic = 'force-dynamic'
@@ -17,8 +18,16 @@ export default async function SettingsPage() {
     <div className="mx-auto max-w-2xl">
       <header className="mb-6 sm:mb-8">
         <h1 className="font-display text-2xl font-bold tracking-tight sm:text-3xl lg:text-4xl">Settings</h1>
-        <p className="mt-1 text-sm text-fg-muted">Manage your account and notifications.</p>
+        <p className="mt-1 text-sm text-fg-muted">Make SplitChain yours.</p>
       </header>
+
+      <section className="mb-8">
+        <h2 className="mb-3 flex items-center gap-2 font-display text-base font-semibold sm:text-lg">
+          <Sparkles className="h-4 w-4 text-neon-cyan" aria-hidden="true" />
+          Identity
+        </h2>
+        <NicknameSettings />
+      </section>
 
       <section className="mb-8">
         <h2 className="mb-3 flex items-center gap-2 font-display text-base font-semibold sm:text-lg">

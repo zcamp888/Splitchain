@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { X, Loader2, Trash2, LogOut, UserMinus, AlertTriangle } from 'lucide-react'
 import { useUpdateGroup, useDeleteGroup, useLeaveGroup, useRemoveMember } from '@/lib/hooks'
+import { displayName } from '@/lib/displayName'
 import { useToast } from '@/components/Toaster'
 
 const EMOJIS = ['💸', '🏖️', '🍕', '🏠', '✈️', '🎉', '⛷️', '🚗', '🍻', '🎬', '☕', '🛒']
@@ -197,13 +198,12 @@ export function GroupSettingsDialog({
           <h3 className="mb-3 text-xs uppercase tracking-wider text-fg-muted">Members ({group.members.length})</h3>
           <ul className="space-y-1.5">
             {group.members.map((m: any) => {
-              const wallet = m.profile?.wallet_address
-              const label = m.profile?.display_name || m.profile?.email || (wallet ? `${wallet.slice(0, 6)}…${wallet.slice(-4)}` : 'Member')
               const isMe = m.user_id === currentUserId
+              const label = isMe ? 'You' : displayName(m.profile)
               return (
                 <li key={m.user_id} className="flex items-center justify-between gap-2 rounded-lg border border-border/60 bg-bg-elev/30 px-3 py-2 text-sm">
                   <div className="min-w-0 flex-1 truncate">
-                    {label} {isMe && <span className="text-xs text-fg-dim">(you)</span>}
+                    {label}
                     {m.role === 'owner' && <span className="ml-1 rounded-full bg-neon-violet/10 px-1.5 py-0.5 text-[10px] text-neon-violet">owner</span>}
                   </div>
                   {isOwner && !isMe && (

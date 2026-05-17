@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { createSupabaseBrowserClient } from '@/lib/supabase/client'
+import { displayName } from '@/lib/displayName'
 
 export type ActivityItem = {
   id: string
@@ -76,22 +77,12 @@ export function useActivityFeed(limit = 30) {
 
       const [{ data: groups }, { data: profiles }] = await Promise.all([
         supabase.from('groups').select('id, name, cover_emoji').in('id', groupIds),
-        supabase.from('profiles').select('id, display_name, email, wallet_address')
+        supabase.from('profiles').select('id, nickname, display_name, email, wallet_address')
           .in('id', Array.from(new Set((feed || []).flatMap((f: any) => [f.actor_id, f.target_id].filter(Boolean))))),
       ])
 
       const groupMap = new Map((groups || []).map((g: any) => [g.id, g]))
       const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]))
-
-      const profileLabel = (id: string | null) => {
-        if (!id) return ''
-        const p: any = profileMap.get(id)
-        if (!p) return 'Member'
-        if (p.display_name) return p.display_name
-        if (p.email && !p.email.endsWith('@wallet.splitchain.local')) return p.email
-        if (p.wallet_address) return `${p.wallet_address.slice(0, 6)}…${p.wallet_address.slice(-4)}`
-        return 'Member'
-      }
 
       return (feed || []).map((f: any): ActivityItem => {
         const g: any = groupMap.get(f.group_id)
@@ -100,8 +91,8 @@ export function useActivityFeed(limit = 30) {
           amount: f.amount !== null ? Number(f.amount) : null,
           group_name: g?.name || 'Group',
           group_emoji: g?.cover_emoji || '💸',
-          actor_name: profileLabel(f.actor_id),
-          target_name: profileLabel(f.target_id),
+          actor_name: displayName(profileMap.get(f.actor_id)),
+          target_name: displayName(profileMap.get(f.target_id)),
           is_me_actor: f.actor_id === user.id,
         }
       })

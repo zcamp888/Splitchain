@@ -2,11 +2,12 @@
 
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowLeft, UserPlus, Loader2, Receipt as ReceiptIcon, Wallet, TrendingUp, CheckCircle2, Zap, Settings, ExternalLink, Download } from 'lucide-react'
+import { ArrowLeft, UserPlus, Loader2, Receipt as ReceiptIcon, Wallet, TrendingUp, CheckCircle2, Zap, Settings, ExternalLink } from 'lucide-react'
 import { useGroupDetail, useGroupExpenses, useGroupSettlements, useCreateSettlement } from '@/lib/hooks'
 import { useMarkGroupSeen } from '@/lib/hooks/useActivity'
 import { useGroupVaults } from '@/lib/hooks/useVaults'
 import { computeBalances, suggestTransfers, formatCurrency } from '@/lib/balances'
+import { displayName } from '@/lib/displayName'
 import { InviteDialog } from '@/components/app/InviteDialog'
 import { ExpenseList } from '@/components/ExpenseList'
 import { AddExpenseDialog } from '@/components/AddExpenseDialog'
@@ -159,8 +160,8 @@ export function GroupDetail({ groupId }: { groupId: string }) {
             const bal = balances.find((b) => b.user_id === m.user_id)?.net || 0
             const positive = bal > 0.01
             const negative = bal < -0.01
-            const wallet = m.profile?.wallet_address
-            const label = m.profile?.display_name || m.profile?.email || (wallet ? `${wallet.slice(0, 6)}…${wallet.slice(-4)}` : 'Member')
+            const isMe = m.user_id === currentUserId
+            const label = isMe ? 'You' : displayName(m.profile)
             return (
               <div key={m.user_id} className="flex items-center gap-2 rounded-full border border-border-strong bg-bg-elev/60 px-3 py-1.5 text-xs">
                 <span className="max-w-[100px] truncate font-medium sm:max-w-none">{label}</span>
@@ -189,8 +190,8 @@ export function GroupDetail({ groupId }: { groupId: string }) {
             {transfers.map((t, i) => {
               const from = memberMap.get(t.from)
               const to = memberMap.get(t.to)
-              const fromLabel = from?.display_name || from?.email || 'Member'
-              const toLabel = to?.display_name || to?.email || 'Member'
+              const fromLabel = t.from === currentUserId ? 'You' : displayName(from)
+              const toLabel = t.to === currentUserId ? 'you' : displayName(to)
               const iAmDebtor = currentUserId === t.from
               const recipientHasWallet = !!to?.wallet_address
               return (
@@ -198,7 +199,7 @@ export function GroupDetail({ groupId }: { groupId: string }) {
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex min-w-0 items-center gap-2">
                       <span className="truncate font-medium">{fromLabel}</span>
-                      <span className="text-fg-dim" aria-hidden="true">→</span>
+                      <span className="text-fg-dim" aria-hidden="true">owes</span>
                       <span className="truncate font-medium">{toLabel}</span>
                     </div>
                     <span className="tabular font-mono font-semibold text-neon-lime">{formatCurrency(t.amount, group.currency)}</span>
@@ -241,13 +242,13 @@ export function GroupDetail({ groupId }: { groupId: string }) {
             {recentSettlements.map((s: any) => {
               const from = memberMap.get(s.from_user)
               const to = memberMap.get(s.to_user)
-              const fromLabel = from?.display_name || from?.email || 'Member'
-              const toLabel = to?.display_name || to?.email || 'Member'
+              const fromLabel = s.from_user === currentUserId ? 'You' : displayName(from)
+              const toLabel = s.to_user === currentUserId ? 'you' : displayName(to)
               return (
                 <li key={s.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/60 bg-bg-elev/30 px-3 py-2 text-xs">
                   <div className="flex min-w-0 items-center gap-2">
                     <span className="font-medium">{fromLabel}</span>
-                    <span className="text-fg-dim" aria-hidden="true">→</span>
+                    <span className="text-fg-dim" aria-hidden="true">paid</span>
                     <span className="font-medium">{toLabel}</span>
                     {s.method === 'onchain' && (
                       <span className="rounded-full bg-neon-violet/10 px-1.5 py-0.5 text-[10px] text-neon-violet">on-chain</span>

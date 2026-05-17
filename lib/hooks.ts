@@ -133,8 +133,6 @@ export function useGroupDetail(groupId: string | undefined) {
   useEffect(() => {
     if (!groupId) return
     const supabase = createSupabaseBrowserClient()
-    // Unique channel name per mount prevents StrictMode double-invocation
-    // from attaching `.on()` listeners to an already-subscribed channel.
     const channel = supabase
       .channel(`group:${groupId}:${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'expenses', filter: `group_id=eq.${groupId}` }, () =>
@@ -164,7 +162,7 @@ export function useGroupDetail(groupId: string | undefined) {
 
       const { data: members } = await supabase
         .from('group_members')
-        .select(`role, joined_at, user_id, profiles:user_id (id, display_name, email, wallet_address)`)
+        .select(`role, joined_at, user_id, profiles:user_id (id, nickname, display_name, email, wallet_address)`)
         .eq('group_id', groupId)
 
       return {
@@ -189,7 +187,7 @@ export function useGroupExpenses(groupId: string | undefined) {
       const { data, error } = await supabase
         .from('expenses')
         .select(`id, amount, currency, description, category, expense_date, created_at, paid_by,
-          paid_by_profile:paid_by (id, display_name, email, wallet_address),
+          paid_by_profile:paid_by (id, nickname, display_name, email, wallet_address),
           splits:expense_splits (id, user_id, share_amount, share_type)`)
         .eq('group_id', groupId)
         .order('expense_date', { ascending: false })

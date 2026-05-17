@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { X, Loader2 } from 'lucide-react'
 import { useCreateExpense, useUpdateExpense } from '@/lib/hooks'
+import { displayName } from '@/lib/displayName'
 import { useToast } from '@/components/Toaster'
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock'
 import { createSupabaseBrowserClient } from '@/lib/supabase/client'
@@ -257,11 +258,10 @@ export function AddExpenseDialog({
                   style={{ backgroundColor: 'rgb(var(--bg-elev))', color: 'rgb(var(--fg))' }}
                 >
                   {members.map((m: any) => {
-                    const wallet = m.profile?.wallet_address
-                    const label = m.profile?.display_name || m.profile?.email || (wallet ? `${wallet.slice(0, 6)}…${wallet.slice(-4)}` : 'Member')
+                    const label = m.user_id === currentUserId ? 'You' : displayName(m.profile)
                     return (
                       <option key={m.user_id} value={m.user_id}>
-                        {m.user_id === currentUserId ? `You` : label}
+                        {label}
                       </option>
                     )
                   })}
@@ -318,8 +318,7 @@ export function AddExpenseDialog({
               </div>
               <div className="space-y-1.5 rounded-xl border border-border-strong bg-bg-elev/40 p-2">
                 {members.map((m: any) => {
-                  const wallet = m.profile?.wallet_address
-                  const label = m.profile?.display_name || m.profile?.email || (wallet ? `${wallet.slice(0, 6)}…${wallet.slice(-4)}` : 'Member')
+                  const label = m.user_id === currentUserId ? 'You' : displayName(m.profile)
                   const checked = includedMembers.has(m.user_id)
                   return (
                     <div

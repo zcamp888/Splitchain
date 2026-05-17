@@ -2,6 +2,7 @@
 
 import { Receipt, Trash2, Plus, Pencil, Zap } from 'lucide-react'
 import { formatCurrency } from '@/lib/balances'
+import { displayName } from '@/lib/displayName'
 import { useDeleteExpense } from '@/lib/hooks'
 import { useToast } from '@/components/Toaster'
 
@@ -61,11 +62,9 @@ export function ExpenseList({
     <ul className="glass divide-y divide-border/60 overflow-hidden rounded-2xl">
       {expenses.map((e: any) => {
         const payer = memberMap.get(e.paid_by)
-        const wallet = payer?.wallet_address
-        const payerLabel =
-          payer?.display_name || payer?.email || (wallet ? `${wallet.slice(0, 6)}…${wallet.slice(-4)}` : 'Unknown')
-        const date = new Date(e.expense_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
         const iPaid = currentUserId && e.paid_by === currentUserId
+        const payerLabel = iPaid ? 'You' : displayName(payer)
+        const date = new Date(e.expense_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
         const canClaim = !!(hasActiveVault && iPaid && onClaim)
 
         return (
