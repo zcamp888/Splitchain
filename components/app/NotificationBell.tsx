@@ -3,8 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import { Bell } from 'lucide-react'
-import { useActivityFeed } from '@/lib/hooks/useActivity'
-import { useUnreadCounts } from '@/lib/hooks/useActivity'
+import { useActivityFeed, useUnreadCounts } from '@/lib/hooks/useActivity'
 import { formatCurrency } from '@/lib/balances'
 
 function timeAgo(iso: string) {
@@ -23,13 +22,58 @@ export function NotificationBell() {
   const { data: items } = useActivityFeed(10)
   const { data: unread } = useUnreadCounts()
   const ref = useRef<HTMLDivElement>(null)
+  const buttonRef = useRef<HTMLButtonElement>(null)
+  const [position, setPosition] = useState<{ top: number; left: number; right: number | 'auto' } | null>(null)
 
   const totalUnread = unread ? Object.values(unread).reduce((s, v) => s + v, 0) : 0
+
+  // Position dropdown using fixed coordinates so it escapes the sidebar's clipping
+  useEffect(() => {
+    if (!open || !buttonRef.current) return
+
+    const updatePosition = () => {
+      const rect = buttonRef.current!.getBoundingClientRect()
+      const viewportWidth = window.innerWidth
+      const dropdownWidth = viewportWidth < 640 ? Math.min(viewportWidth - 24, 360) : 384
+
+      // Default: align right edge of dropdown with right edge of button
+      let left = rect.right - dropdownWidth
+      let right: number | 'auto' = 'auto'
+
+      // If dropdown would overflow left edge, flip it to open rightward from button
+      if (left < 12) {
+        left = rect.left
+        // If still overflows right edge, anchor to viewport right with padding
+        if (left + dropdownWidth > viewportWidth - 12) {
+          left = Math.max(12, viewportWidth - dropdownWidth - 12)
+        }
+      }
+
+      setPosition({
+        top: rect.bottom + 8,
+        left,
+        right,
+      })
+    }
+
+    updatePosition()
+    window.addEventListener('resize', updatePosition)
+    window.addEventListener('scroll', updatePosition, true)
+    return () => {
+      window.removeEventListener('resize', updatePosition)
+      window.removeEventListener('scroll', updatePosition, true)
+    }
+  }, [open])
 
   useEffect(() => {
     if (!open) return
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+      if (
+        ref.current && !ref.current.contains(e.target as Node) &&
+        buttonRef.current && !buttonRef.current.contains(e.target as Node)
+      ) {
+        setOpen(false)
+      }
     }
     const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }
     document.addEventListener('mousedown', handler)
@@ -41,12 +85,14 @@ export function NotificationBell() {
   }, [open])
 
   return (
-    <div className="relative" ref={ref}>
+    <>
       <button
+        ref={buttonRef}
         onClick={() => setOpen((v) => !v)}
         className="relative rounded-xl p-2 text-fg-muted transition-colors hover:bg-bg-card hover:text-fg"
         aria-label={`Notifications${totalUnread > 0 ? `, ${totalUnread} unread` : ''}`}
         aria-expanded={open}
+        aria-haspopup="dialog"
       >
         <Bell className="h-4 w-4" aria-hidden="true" />
         {totalUnread > 0 && (
@@ -59,21 +105,32 @@ export function NotificationBell() {
         )}
       </button>
 
-      {open && (
+      {open && position && (
         <div
+          ref={ref}
           role="dialog"
           aria-label="Recent activity"
-          className="glass-strong absolute right-0 top-full z-50 mt-2 w-80 overflow-hidden rounded-2xl shadow-2xl sm:w-96"
+          className="glass-strong fixed z-[100] w-[calc(100vw-1.5rem)] max-w-sm overflow-hidden rounded-2xl shadow-2xl ring-1 ring-border-strong/60 animate-in fade-in slide-in-from-top-2 duration-200 sm:w-96"
+          style={{
+            top: `${position.top}px`,
+            left: `${position.left}px`,
+            right: position.right === 'auto' ? 'auto' : `${position.right}px`,
+          }}
         >
-          <div className="border-b border-border/60 px-4 py-3">
+          <div className="flex items-center justify-between border-b border-border/60 px-4 py-3">
             <h3 className="font-display text-sm font-semibold">Recent activity</h3>
+            {totalUnread > 0 && (
+              <span className="rounded-full bg-neon-violet/15 px-2 py-0.5 text-[10px] font-medium text-neon-violet">
+                {totalUnread} new
+              </span>
+            )}
           </div>
           {!items || items.length === 0 ? (
             <div className="px-4 py-8 text-center text-sm text-fg-muted">
               Nothing yet — add an expense to start.
             </div>
           ) : (
-            <ul className="max-h-96 divide-y divide-border/60 overflow-y-auto">
+            <ul className="max-h-[60vh] divide-y divide-border/60 overflow-y-auto">
               {items.slice(0, 8).map((item) => {
                 const actor = item.is_me_actor ? 'You' : item.actor_name
                 return (
@@ -90,7 +147,7 @@ export function NotificationBell() {
                           {item.kind === 'expense' && (
                             <>
                               <span className="text-fg-muted"> added </span>
-                              <span className="truncate">{item.title}</span>
+                              <span className="line-clamp-1 inline">{item.title}</span>
                             </>
                           )}
                           {item.kind === 'settlement' && (
@@ -103,7 +160,7 @@ export function NotificationBell() {
                             <span className="text-fg-muted"> joined</span>
                           )}
                         </div>
-                        <div className="mt-0.5 text-[10px] text-fg-dim">
+                        <div className="mt-0.5 truncate text-[10px] text-fg-dim">
                           {item.group_name} · {timeAgo(item.occurred_at)}
                         </div>
                       </div>
@@ -121,12 +178,12 @@ export function NotificationBell() {
           <Link
             href="/app/activity"
             onClick={() => setOpen(false)}
-            className="block border-t border-border/60 px-4 py-2.5 text-center text-xs font-medium text-neon-cyan hover:bg-bg-elev/40"
+            className="block border-t border-border/60 px-4 py-2.5 text-center text-xs font-medium text-neon-cyan transition-colors hover:bg-bg-elev/40"
           >
             View all activity →
           </Link>
         </div>
       )}
-    </div>
+    </>
   )
 }
