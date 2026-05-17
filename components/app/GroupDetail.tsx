@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowLeft, UserPlus, Loader2, Receipt as ReceiptIcon, Wallet, TrendingUp, CheckCircle2, Zap, Settings, ExternalLink } from 'lucide-react'
+import { ArrowLeft, UserPlus, Loader2, Receipt as ReceiptIcon, Wallet, TrendingUp, CheckCircle2, Zap, Settings, ExternalLink, Send } from 'lucide-react'
 import { useGroupDetail, useGroupExpenses, useGroupSettlements, useCreateSettlement } from '@/lib/hooks'
 import { useMarkGroupSeen } from '@/lib/hooks/useActivity'
 import { useGroupVaults } from '@/lib/hooks/useVaults'
@@ -12,6 +12,7 @@ import { InviteDialog } from '@/components/app/InviteDialog'
 import { ExpenseList } from '@/components/ExpenseList'
 import { AddExpenseDialog } from '@/components/AddExpenseDialog'
 import { SettleOnChainDialog } from '@/components/app/SettleOnChainDialog'
+import { SendUsdcDialog } from '@/components/app/SendUsdcDialog'
 import { GroupSettingsDialog } from '@/components/app/GroupSettingsDialog'
 import { RecurringList } from '@/components/app/RecurringList'
 import { ExportMenu } from '@/components/app/ExportMenu'
@@ -29,6 +30,7 @@ export function GroupDetail({ groupId }: { groupId: string }) {
   const markSeen = useMarkGroupSeen()
   const [showInvite, setShowInvite] = useState(false)
   const [showAdd, setShowAdd] = useState(false)
+  const [showSend, setShowSend] = useState(false)
   const [editExpense, setEditExpense] = useState<any | null>(null)
   const [showSettings, setShowSettings] = useState(false)
   const [onChainTx, setOnChainTx] = useState<{ from: string; to: string; amount: number; toProfile: any } | null>(null)
@@ -147,13 +149,23 @@ export function GroupDetail({ groupId }: { groupId: string }) {
           </div>
         </div>
 
-        <button
-          onClick={() => { setEditExpense(null); setShowAdd(true) }}
-          className="btn-primary mt-5 w-full sm:w-auto"
-        >
-          <ReceiptIcon className="h-4 w-4" aria-hidden="true" />
-          Add expense
-        </button>
+        <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+          <button
+            onClick={() => { setEditExpense(null); setShowAdd(true) }}
+            className="btn-primary flex-1"
+          >
+            <ReceiptIcon className="h-4 w-4" aria-hidden="true" />
+            Add expense
+          </button>
+          <button
+            onClick={() => setShowSend(true)}
+            className="btn-ghost flex-1"
+            aria-label="Send USDC on-chain"
+          >
+            <Send className="h-4 w-4 text-neon-lime" aria-hidden="true" />
+            Send USDC
+          </button>
+        </div>
 
         <div className="mt-5 flex flex-wrap gap-1.5 sm:gap-2">
           {group.members.map((m: any) => {
@@ -329,6 +341,13 @@ export function GroupDetail({ groupId }: { groupId: string }) {
             share_type: s.share_type,
           })),
         } : undefined}
+      />
+      <SendUsdcDialog
+        open={showSend}
+        onClose={() => setShowSend(false)}
+        groupId={groupId}
+        groupMembers={group.members}
+        currentUserId={currentUserId}
       />
       {onChainTx && currentUserId && (
         <SettleOnChainDialog

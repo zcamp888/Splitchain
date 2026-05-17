@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { Plus, Users, Loader2, TrendingUp, TrendingDown, AlertCircle, Calendar, ArrowUpRight, Sparkles, Activity as ActivityIcon, Download } from 'lucide-react'
+import { Plus, Users, Loader2, TrendingUp, TrendingDown, AlertCircle, Calendar, ArrowUpRight, Sparkles, Activity as ActivityIcon, Download, Send } from 'lucide-react'
 import { useGroups } from '@/lib/hooks'
 import { useDashboard } from '@/lib/hooks/useDashboard'
 import { useUnreadCounts } from '@/lib/hooks/useActivity'
@@ -11,8 +11,10 @@ import { useExportPersonalCSV } from '@/lib/hooks/useExport'
 import { CreateGroupDialog } from '@/components/CreateGroupDialog'
 import { SpendingInsights } from '@/components/app/SpendingInsights'
 import { ActivityFeed } from '@/components/app/ActivityFeed'
+import { SendUsdcDialog } from '@/components/app/SendUsdcDialog'
 import { useToast } from '@/components/Toaster'
 import { formatCurrency } from '@/lib/balances'
+import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 
 function formatTotals(totals: Record<string, number>) {
   const entries = Object.entries(totals).filter(([, v]) => v > 0.01)
@@ -22,6 +24,8 @@ function formatTotals(totals: Record<string, number>) {
 
 export function PersonalDashboard() {
   const [showCreate, setShowCreate] = useState(false)
+  const [showSend, setShowSend] = useState(false)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const { data: groups, isLoading: groupsLoading } = useGroups()
   const { data: dash, isLoading: dashLoading } = useDashboard()
   const { data: unread } = useUnreadCounts()
@@ -29,7 +33,11 @@ export function PersonalDashboard() {
   const exportPersonal = useExportPersonalCSV()
   const { push } = useToast()
 
-  // Open create dialog if launched via PWA shortcut
+  useEffect(() => {
+    const supabase = createSupabaseBrowserClient()
+    supabase.auth.getUser().then(({ data: { user } }) => setCurrentUserId(user?.id || null))
+  }, [])
+
   useEffect(() => {
     if (typeof window === 'undefined') return
     const params = new URLSearchParams(window.location.search)
@@ -39,7 +47,6 @@ export function PersonalDashboard() {
     }
   }, [])
 
-  // Auto-materialize any due recurring expenses on dashboard load.
   useEffect(() => {
     if (typeof window === 'undefined') return
     const last = localStorage.getItem('sc:recurring:last')
@@ -78,6 +85,14 @@ export function PersonalDashboard() {
           <p className="mt-1 text-sm text-fg-muted">Where you stand across all your groups.</p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => setShowSend(true)}
+            className="btn-ghost px-3 py-2 text-sm sm:px-5"
+            aria-label="Send USDC on-chain"
+          >
+            <Send className="h-4 w-4 text-neon-lime" aria-hidden="true" />
+            <span className="hidden sm:inline">Send USDC</span>
+          </button>
           {hasGroups && (
             <button
               onClick={handleExport}
@@ -285,6 +300,11 @@ export function PersonalDashboard() {
       )}
 
       <CreateGroupDialog open={showCreate} onClose={() => setShowCreate(false)} />
+      <SendUsdcDialog
+        open={showSend}
+        onClose={() => setShowSend(false)}
+        currentUserId={currentUserId}
+      />
     </div>
   )
 }
